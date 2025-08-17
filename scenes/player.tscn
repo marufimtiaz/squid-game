@@ -1,25 +1,27 @@
 [gd_scene load_steps=9 format=3 uid="uid://dxcpgmq4vm1yh"]
 
 [ext_resource type="Script" uid="uid://cjaoxcgl0xnf4" path="res://scripts/player.gd" id="1_3vyb7"]
-[ext_resource type="Texture2D" uid="uid://c2draw2quivrj" path="res://sprites/3 Dude_Monster/Dude_Monster_Idle_4.png" id="2_g2els"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_u8vuu"]
 size = Vector2(16, 26)
 
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_3vyb7"]
+load_path = "res://.godot/imported/Dude_Monster_Idle_4.png-2d87fa3d6c5c9ee42d0fd0ec18a9e422.ctex"
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_qhqgy"]
-atlas = ExtResource("2_g2els")
+atlas = SubResource("CompressedTexture2D_3vyb7")
 region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_dqkch"]
-atlas = ExtResource("2_g2els")
+atlas = SubResource("CompressedTexture2D_3vyb7")
 region = Rect2(32, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_qlg0r"]
-atlas = ExtResource("2_g2els")
+atlas = SubResource("CompressedTexture2D_3vyb7")
 region = Rect2(64, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tuyoq"]
-atlas = ExtResource("2_g2els")
+atlas = SubResource("CompressedTexture2D_3vyb7")
 region = Rect2(96, 0, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_fjrip"]
