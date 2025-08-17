@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqj855bhg2bri"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xl315"]
+size = Vector2(39, 258)
+
+[node name="Goal" type="Area2D"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(20, 131)
+shape = SubResource("RectangleShape2D_xl315")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+anchors_preset = -1
+offset_right = 40.0
+offset_bottom = 264.0
