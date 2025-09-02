@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Squid Game"
-run/main_scene="uid://b02u0dctulg6r"
+run/main_scene="uid://b0tguufrmmsqt"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 

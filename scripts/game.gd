@@ -15,17 +15,23 @@ const MOVE_EPS := 0.5  # tiny tolerance so micro-jitter doesn't kill you
 @onready var spawn: Marker2D = $Spawn
 @onready var goal: Area2D = $Goal
 
+
+
+
 func _ready():
 	# Spawn player
 	player.global_position = spawn.global_position
 	last_player_pos = player.global_position
 
-	# Connect signals
-	light.switched.connect(_on_light_switched)
-	goal.body_entered.connect(_on_goal_body_entered)
-	restart_button.pressed.connect(func(): get_tree().reload_current_scene())
 
-	#_update_ui()
+func _on_exit_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/startmenu.tscn")
+
+
+func _on_restart_button_pressed() -> void:
+	get_tree().reload_current_scene()
+
+
 
 func _physics_process(_delta):
 	if state != State.PLAYING:
@@ -40,7 +46,7 @@ func _physics_process(_delta):
 
 func _on_light_switched(is_red: bool):
 	light_is_red = is_red
-	#_update_ui()
+
 
 func _on_goal_body_entered(body):
 	if body == player and state == State.PLAYING:
@@ -56,7 +62,3 @@ func _die(reason: String):
 	status_label.text = "ELIMINATED ☠  " + reason
 	status_label.modulate = Color(1, 0.4, 0.4)
 	status_label.visible = true
-
-#func _update_ui():
-	#light_label.text = "LIGHT: " + ("RED" if light_is_red else "GREEN")
-	#light_label.modulate = Color(0.95, 0.2, 0.2) if light_is_red else Color(0.2, 0.9, 0.3)

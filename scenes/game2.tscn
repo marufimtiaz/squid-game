@@ -1,0 +1,36 @@
+[gd_scene load_steps=5 format=3 uid="uid://debhruqvkbw1c"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_7pxbb"]
+sky_material = SubResource("ProceduralSkyMaterial_p8882")
+
+[sub_resource type="Environment" id="Environment_u48pd"]
+background_mode = 2
+sky = SubResource("Sky_7pxbb")
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_p8882"]
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.12, 0.3, 0.13499999, 1)
+
+[node name="Game2" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_u48pd")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.93420446, -0.268415, 0.23497956, 0, 0.65868944, 0.75241494, -0.356738, -0.7029094, 0.6153506, 0, 0, 0)
+shadow_enabled = true
+
+[node name="CSGBox3D" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.916046, 0, 12.600433)
+use_collision = true
+size = Vector3(41.269592, 1, 26.200867)
+material = SubResource("StandardMaterial3D_p8882")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.008951084, 0.6705045, -0.7418515, -0.025804795, 0.741789, 0.67013675, 0.9996269, 0.013144873, 0.023942055, -11.490652, 11.619081, 13.324721)
+fov = 67.5
