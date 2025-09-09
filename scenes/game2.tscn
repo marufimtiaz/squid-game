@@ -1,4 +1,6 @@
-[gd_scene load_steps=5 format=3 uid="uid://debhruqvkbw1c"]
+[gd_scene load_steps=6 format=3 uid="uid://debhruqvkbw1c"]
+
+[ext_resource type="PackedScene" uid="uid://bs72ogkvdd7d6" path="res://addons/proto_controller/proto_controller.tscn" id="2_u48pd"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -26,11 +28,19 @@ transform = Transform3D(0.93420446, -0.268415, 0.23497956, 0, 0.65868944, 0.7524
 shadow_enabled = true
 
 [node name="CSGBox3D" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.916046, 0, 12.600433)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.122799, 1.9073486e-06, 12.928115)
 use_collision = true
 size = Vector3(41.269592, 1, 26.200867)
 material = SubResource("StandardMaterial3D_p8882")
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.008951084, 0.6705045, -0.7418515, -0.025804795, 0.741789, 0.67013675, 0.9996269, 0.013144873, 0.023942055, -11.490652, 11.619081, 13.324721)
-fov = 67.5
+[node name="ProtoController" parent="." instance=ExtResource("2_u48pd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35887, 0, 14.050513)
+can_sprint = true
+
+[node name="Mesh" parent="ProtoController" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4208535, 0)
+
+[node name="Camera3D" parent="ProtoController/Head" index="0"]
+transform = Transform3D(0.9999986, 0.0008738362, -0.0013885731, 4.614101e-05, 0.8310427, 0.5562086, 0.0016399986, -0.5562079, 0.83104146, 0, 0.6431637, 1.2425346)
+
+[editable path="ProtoController"]
