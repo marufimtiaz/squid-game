@@ -9,7 +9,6 @@ const MOVE_EPS := 0.5  # tiny tolerance so micro-jitter doesn't kill you
 
 @onready var player: CharacterBody2D = $Player
 @onready var light: Node2D = $Player/Camera2D/Light
-#@onready var light_label: Label = $Player/Camera2D/LightLabel
 @onready var status_label: Label = $Player/Camera2D/StatusLabel
 @onready var restart_button: Button = $Player/Camera2D/RestartButton
 @onready var spawn: Marker2D = $Spawn
