@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://debhruqvkbw1c"]
+[gd_scene load_steps=8 format=3 uid="uid://debhruqvkbw1c"]
 
+[ext_resource type="PackedScene" uid="uid://bwcufv5r8ctl8" path="res://scenes/platforms.tscn" id="2_btr28"]
 [ext_resource type="PackedScene" uid="uid://bs72ogkvdd7d6" path="res://addons/player/proto_controller.tscn" id="2_u48pd"]
+[ext_resource type="PackedScene" uid="uid://cb7312hk6qiee" path="res://scenes/killzone.tscn" id="3_btr28"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -14,9 +16,7 @@ background_mode = 2
 sky = SubResource("Sky_7pxbb")
 tonemap_mode = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_p8882"]
-vertex_color_use_as_albedo = true
-albedo_color = Color(0.12, 0.3, 0.13499999, 1)
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_h21dd"]
 
 [node name="Game2" type="Node3D"]
 
@@ -24,17 +24,11 @@ albedo_color = Color(0.12, 0.3, 0.13499999, 1)
 environment = SubResource("Environment_u48pd")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.93420446, -0.268415, 0.23497956, 0, 0.65868944, 0.75241494, -0.356738, -0.7029094, 0.6153506, 0, 0, 0)
+transform = Transform3D(0.9342045, -0.268415, 0.23497954, 0, 0.65868944, 0.75241494, -0.35673803, -0.7029094, 0.6153506, 0, 0.6949854, 0)
 shadow_enabled = true
 
-[node name="CSGBox3D" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.122799, 1.9073486e-06, 12.928115)
-use_collision = true
-size = Vector3(41.269592, 1, 26.200867)
-material = SubResource("StandardMaterial3D_p8882")
-
 [node name="Player" parent="." instance=ExtResource("2_u48pd")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35887, 0, 14.050513)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 5.904961, 0, 14.050513)
 can_sprint = true
 
 [node name="Mesh" parent="Player" index="0"]
@@ -42,5 +36,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4208535, 0)
 
 [node name="Camera3D" parent="Player/Head" index="0"]
 transform = Transform3D(0.9999987, 0.0008738362, -0.001388573, 4.6141013e-05, 0.8310427, 0.5562086, 0.0016399988, -0.5562079, 0.8310416, 0, 1.0626497, 1.4954376)
+
+[node name="Platforms" parent="." instance=ExtResource("2_btr28")]
+
+[node name="Killzone" parent="." instance=ExtResource("3_btr28")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Killzone"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.649086, -5.519144, 0)
+shape = SubResource("WorldBoundaryShape3D_h21dd")
+debug_color = Color(0.050708726, 0.5730574, 0.83116233, 0.878)
 
 [editable path="Player"]
