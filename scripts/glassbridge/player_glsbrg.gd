@@ -57,8 +57,9 @@ func freeze():
 	can_move = false
 	velocity.x = 0
 	velocity.y = 0
-	release_mouse()
 	
+func slow():
+	move_speed = base_speed/2
 	
 	
 func _ready() -> void:

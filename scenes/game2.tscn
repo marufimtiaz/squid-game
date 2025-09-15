@@ -1,8 +1,12 @@
-[gd_scene load_steps=8 format=3 uid="uid://debhruqvkbw1c"]
+[gd_scene load_steps=11 format=3 uid="uid://debhruqvkbw1c"]
 
+[ext_resource type="Script" uid="uid://d0pgl6k41vxjv" path="res://scripts/glassbridge/glsbrg.gd" id="1_h21dd"]
 [ext_resource type="PackedScene" uid="uid://bwcufv5r8ctl8" path="res://scenes/platforms.tscn" id="2_btr28"]
 [ext_resource type="PackedScene" uid="uid://bs72ogkvdd7d6" path="res://addons/player/proto_controller.tscn" id="2_u48pd"]
 [ext_resource type="PackedScene" uid="uid://cb7312hk6qiee" path="res://scenes/killzone.tscn" id="3_btr28"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_h21dd"]
+size = Vector3(11.177734, 10.269043, 39)
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -16,9 +20,17 @@ background_mode = 2
 sky = SubResource("Sky_7pxbb")
 tonemap_mode = 2
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_dflkw"]
+size = Vector3(11, 11, 39)
+
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_h21dd"]
 
 [node name="Game2" type="Node3D"]
+script = ExtResource("1_h21dd")
+
+[node name="Platforms_FinishPlatform_Area3D#CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.6345215, 9.536743e-07)
+shape = SubResource("BoxShape3D_h21dd")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_u48pd")
@@ -39,6 +51,12 @@ transform = Transform3D(0.9999987, 0.0008738362, -0.001388573, 4.6141013e-05, 0.
 
 [node name="Platforms" parent="." instance=ExtResource("2_btr28")]
 
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Platforms/FinishPlatform/Goal" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+shape = SubResource("BoxShape3D_dflkw")
+
+[node name="Timer" type="Timer" parent="Platforms/FinishPlatform/Goal" index="1"]
+
 [node name="Killzone" parent="." instance=ExtResource("3_btr28")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Killzone"]
@@ -46,4 +64,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.649086, -5.519144, 0)
 shape = SubResource("WorldBoundaryShape3D_h21dd")
 debug_color = Color(0.050708726, 0.5730574, 0.83116233, 0.878)
 
+[connection signal="body_entered" from="Platforms/FinishPlatform/Goal" to="." method="_on_goal_body_entered"]
+[connection signal="timeout" from="Platforms/FinishPlatform/Goal/Timer" to="." method="_on_timer_timeout"]
+
 [editable path="Player"]
+[editable path="Platforms"]

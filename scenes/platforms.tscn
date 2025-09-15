@@ -1,11 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://bwcufv5r8ctl8"]
+[gd_scene load_steps=8 format=3 uid="uid://bwcufv5r8ctl8"]
 
 [ext_resource type="Texture2D" uid="uid://s10ugjpmm8df" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_Color.png" id="1_vr0gk"]
 [ext_resource type="Texture2D" uid="uid://ju4huixnoiyo" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_NormalGL.png" id="2_3fehc"]
 [ext_resource type="Texture2D" uid="uid://crg6u14wdy2fm" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_Roughness.png" id="3_75f1f"]
 [ext_resource type="Texture2D" uid="uid://cd6yvdb1rsp1e" path="res://textures/Glass_Frosted_001_SD/Glass_Frosted_001_basecolor.jpg" id="4_7d13m"]
 [ext_resource type="Texture2D" uid="uid://8m45yafmso8l" path="res://textures/Glass_Frosted_001_SD/Glass_Frosted_001_normal.jpg" id="5_yy2hq"]
-[ext_resource type="Script" uid="uid://kcuvn61l5yu0" path="res://scripts/glassbridge/glass.gd" id="6_3fehc"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xrrf0"]
 vertex_color_is_srgb = true
@@ -41,6 +40,8 @@ use_collision = true
 size = Vector3(11, 1, 39.039978)
 material = SubResource("StandardMaterial3D_xrrf0")
 
+[node name="Goal" type="Area3D" parent="FinishPlatform"]
+
 [node name="Glass1" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.415646, 1.9073486e-06, 11.745406)
 use_collision = true
@@ -62,7 +63,6 @@ size = Vector3(8.685547, 1, 9)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Layer3" type="Node" parent="."]
-script = ExtResource("6_3fehc")
 
 [node name="Glass4" type="CSGBox3D" parent="Layer3"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.444897, 0.01736641, -2.7196045)
@@ -89,7 +89,6 @@ size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Layer4" type="Node" parent="."]
-script = ExtResource("6_3fehc")
 
 [node name="Glass4" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, -4.7196045)
