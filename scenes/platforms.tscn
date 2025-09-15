@@ -1,0 +1,140 @@
+[gd_scene load_steps=9 format=3 uid="uid://bwcufv5r8ctl8"]
+
+[ext_resource type="Texture2D" uid="uid://s10ugjpmm8df" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_Color.png" id="1_vr0gk"]
+[ext_resource type="Texture2D" uid="uid://ju4huixnoiyo" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_NormalGL.png" id="2_3fehc"]
+[ext_resource type="Texture2D" uid="uid://crg6u14wdy2fm" path="res://textures/Grass005_1K-PNG/Grass005_1K-PNG_Roughness.png" id="3_75f1f"]
+[ext_resource type="Texture2D" uid="uid://cd6yvdb1rsp1e" path="res://textures/Glass_Frosted_001_SD/Glass_Frosted_001_basecolor.jpg" id="4_7d13m"]
+[ext_resource type="Texture2D" uid="uid://8m45yafmso8l" path="res://textures/Glass_Frosted_001_SD/Glass_Frosted_001_normal.jpg" id="5_yy2hq"]
+[ext_resource type="Script" uid="uid://kcuvn61l5yu0" path="res://scripts/glassbridge/glass.gd" id="6_3fehc"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xrrf0"]
+vertex_color_is_srgb = true
+albedo_color = Color(0.19248709, 0.45044678, 0.116376586, 1)
+albedo_texture = ExtResource("1_vr0gk")
+roughness_texture = ExtResource("3_75f1f")
+normal_enabled = true
+normal_scale = 5.0
+normal_texture = ExtResource("2_3fehc")
+uv1_scale = Vector3(4, 4, 4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kh4a2"]
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.6)
+albedo_texture = ExtResource("4_7d13m")
+albedo_texture_force_srgb = true
+roughness_texture = ExtResource("3_75f1f")
+normal_enabled = true
+normal_texture = ExtResource("5_yy2hq")
+uv1_scale = Vector3(5, 5, 5)
+
+[node name="Platforms" type="Node3D"]
+
+[node name="MainPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.436794, 1.9073486e-06, 12.928115)
+use_collision = true
+size = Vector3(34.6416, 1, 26.200867)
+material = SubResource("StandardMaterial3D_xrrf0")
+
+[node name="FinishPlatform" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.39954, 1.9073486e-06, 11.528548)
+use_collision = true
+size = Vector3(11, 1, 29)
+material = SubResource("StandardMaterial3D_xrrf0")
+
+[node name="Glass1" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.415646, 1.9073486e-06, 11.745406)
+use_collision = true
+size = Vector3(8.685547, 1, 18)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer2" type="Node" parent="."]
+
+[node name="Glass2" type="CSGBox3D" parent="Layer2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.47843, 3.8146973e-06, 22.781857)
+use_collision = true
+size = Vector3(8.685547, 1, 9)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass3" type="CSGBox3D" parent="Layer2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.47843, 3.8146973e-06, 2.4195118)
+use_collision = true
+size = Vector3(8.685547, 1, 9)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer3" type="Node" parent="."]
+script = ExtResource("6_3fehc")
+
+[node name="Glass4" type="CSGBox3D" parent="Layer3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.67728, 0.01736641, -2.7196045)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass5" type="CSGBox3D" parent="Layer3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.67728, 0.01736641, 7.6983643)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass6" type="CSGBox3D" parent="Layer3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.67728, 0.01736641, 18.088573)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass7" type="CSGBox3D" parent="Layer3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.67728, 0.01736641, 27.377186)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer4" type="Node" parent="."]
+script = ExtResource("6_3fehc")
+
+[node name="Glass4" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, -4.7196045)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass5" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 0.2803955)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass6" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 5.2803955)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass7" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 10.2803955)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass8" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 15.2803955)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass9" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 20.280396)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass10" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 25.280396)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass11" type="CSGBox3D" parent="Layer4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.67728, 0.01736641, 30.280396)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
