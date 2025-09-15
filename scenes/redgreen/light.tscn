@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://c758lm45bcnvq"]
 
-[ext_resource type="Script" uid="uid://bmwlcrgyw8o5a" path="res://scripts/light.gd" id="1_24oxn"]
+[ext_resource type="Script" uid="uid://bmwlcrgyw8o5a" path="res://scripts/rlgl/light.gd" id="1_24oxn"]
 
 [node name="Light" type="Node2D"]
 script = ExtResource("1_24oxn")

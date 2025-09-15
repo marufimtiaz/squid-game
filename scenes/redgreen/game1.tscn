@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://b02u0dctulg6r"]
 
-[ext_resource type="Script" uid="uid://c3eny3qu08uhf" path="res://scripts/game.gd" id="1_7cdra"]
+[ext_resource type="Script" uid="uid://c3eny3qu08uhf" path="res://scripts/rlgl/game_rlgl.gd" id="1_7cdra"]
 [ext_resource type="PackedScene" uid="uid://dvdbemwquplw7" path="res://scenes/redgreen/spawn.tscn" id="2_86ukt"]
 [ext_resource type="PackedScene" uid="uid://cqj855bhg2bri" path="res://scenes/redgreen/goal.tscn" id="3_pcias"]
 [ext_resource type="PackedScene" uid="uid://dxcpgmq4vm1yh" path="res://scenes/redgreen/player.tscn" id="4_s2a4n"]
