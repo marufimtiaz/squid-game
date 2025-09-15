@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://b2w3t6p82gxcs"]
 
 [ext_resource type="Script" uid="uid://c853b212q13em" path="res://scripts/glassbridge/player_glass.gd" id="1_ftgw7"]
-[ext_resource type="PackedScene" uid="uid://b8tau7kx7phef" path="res://scenes/remy.tscn" id="2_ftgw7"]
+[ext_resource type="PackedScene" uid="uid://b8tau7kx7phef" path="res://scenes/glassbridge/remy.tscn" id="2_ftgw7"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iof21"]
 albedo_color = Color(0.91806, 0.575202, 0.222449, 1)
