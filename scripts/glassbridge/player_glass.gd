@@ -49,6 +49,8 @@ var mouse_captured : bool = false
 var look_rotation : Vector2
 var move_speed : float = 0.0
 var freeflying : bool = false
+var jump_start_time : float = 0.0
+var is_jump_starting : bool = false
 
 var idle_anim = "Remyanims/Idle"
 var walk_anim = "Remyanims/Walk"
@@ -115,6 +117,9 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed(input_jump) and is_on_floor():
 			velocity.y = jump_velocity
 			animation_player.play(jump_anim)
+			animation_player.speed_scale = 1  # Change the jump animation speed
+			# Skip the first few frames (adjust 0.5 to skip more/fewer frames)
+			animation_player.seek(0.4, true)
 
 	# Modify speed based on sprinting
 	if can_sprint and Input.is_action_pressed(input_sprint):
@@ -129,15 +134,28 @@ func _physics_process(delta: float) -> void:
 		if move_dir:
 			velocity.x = move_dir.x * move_speed
 			velocity.z = move_dir.z * move_speed
-			if is_on_floor():
+			# Only play walk animation if on floor and moving (and not jumping)
+			if is_on_floor() and not Input.is_action_just_pressed(input_jump):
+				animation_player.speed_scale = 1.0  # Reset speed to normal
 				animation_player.play(walk_anim)
 		else:
 			velocity.x = move_toward(velocity.x, 0, move_speed)
 			velocity.z = move_toward(velocity.z, 0, move_speed)
-			animation_player.play(idle_anim)
+			# Only play idle animation if on floor (and not jumping)
+			if is_on_floor() and not Input.is_action_just_pressed(input_jump):
+				animation_player.speed_scale = 1.0  # Reset speed to normal
+				animation_player.play(idle_anim)
 	else:
 		velocity.x = 0
 		velocity.y = 0
+		# Only play idle if not jumping
+		if not Input.is_action_just_pressed(input_jump):
+			animation_player.speed_scale = 1.0  # Reset speed to normal
+			animation_player.play(idle_anim)
+	
+	# If we're in the air and not on floor, keep jump animation playing
+	if not is_on_floor() and animation_player.current_animation != jump_anim:
+		#animation_player.speed_scale = 1.5  # Keep double speed for jump
 		animation_player.play(idle_anim)
 	
 	# Use velocity to actually move
