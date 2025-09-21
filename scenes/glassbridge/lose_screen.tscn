@@ -76,6 +76,7 @@ script = ExtResource("1_ck0jh")
 
 [node name="Panel" type="Panel" parent="."]
 modulate = Color(0.30588236, 0.30588236, 0.30588236, 1)
+self_modulate = Color(0.75, 0.030000016, 0.030000016, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
