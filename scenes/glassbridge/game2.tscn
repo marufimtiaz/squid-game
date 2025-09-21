@@ -34,12 +34,60 @@ shadow_enabled = true
 
 [node name="Platforms" parent="." instance=ExtResource("2_btr28")]
 
+[node name="FinishPlatform" parent="Platforms" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80.160194, 1.9073486e-06, 12.926406)
+
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Platforms/FinishPlatform/Goal" index="0"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
 shape = SubResource("BoxShape3D_dflkw")
 
 [node name="Timer" type="Timer" parent="Platforms/FinishPlatform/Goal" index="1"]
 wait_time = 1.5
+
+[node name="Glass1" parent="Platforms" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.415646, 1.9073486e-06, 11.745406)
+
+[node name="Glass2" parent="Platforms/Layer2" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.935375, 3.8146973e-06, 22.781857)
+
+[node name="Glass3" parent="Platforms/Layer2" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.935375, 3.8146973e-06, 2.4195118)
+
+[node name="Glass4" parent="Platforms/Layer3" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.11626, 0.01736641, -2.7196045)
+
+[node name="Glass5" parent="Platforms/Layer3" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.11626, 0.01736641, 7.6983643)
+
+[node name="Glass6" parent="Platforms/Layer3" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.11626, 0.01736641, 18.088573)
+
+[node name="Glass7" parent="Platforms/Layer3" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.11626, 0.01736641, 27.377186)
+
+[node name="Glass4" parent="Platforms/Layer4" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, -4.7196045)
+
+[node name="Glass5" parent="Platforms/Layer4" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 0.2803955)
+
+[node name="Glass6" parent="Platforms/Layer4" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 5.2803955)
+
+[node name="Glass7" parent="Platforms/Layer4" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 10.2803955)
+
+[node name="Glass8" parent="Platforms/Layer4" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 15.2803955)
+
+[node name="Glass9" parent="Platforms/Layer4" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 20.280396)
+
+[node name="Glass10" parent="Platforms/Layer4" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 25.280396)
+
+[node name="Glass11" parent="Platforms/Layer4" index="7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 30.280396)
 
 [node name="Killzone" parent="." instance=ExtResource("3_btr28")]
 
