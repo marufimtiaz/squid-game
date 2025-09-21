@@ -129,7 +129,8 @@ func _physics_process(delta: float) -> void:
 		if move_dir:
 			velocity.x = move_dir.x * move_speed
 			velocity.z = move_dir.z * move_speed
-			animation_player.play(walk_anim)
+			if is_on_floor():
+				animation_player.play(walk_anim)
 		else:
 			velocity.x = move_toward(velocity.x, 0, move_speed)
 			velocity.z = move_toward(velocity.z, 0, move_speed)
