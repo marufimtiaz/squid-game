@@ -102,7 +102,7 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 		print("Connected body_entered signal for platform: ", platform.name)
 		
 	else:
-		change_platform_color(platform, Color.BLUE)    # Blue for solid
+		#change_platform_color(platform, Color.BLUE)    # Blue for solid
 		print("Set platform as solid: ", platform.name)
 
 
