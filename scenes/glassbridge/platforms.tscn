@@ -90,49 +90,49 @@ material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Layer4" type="Node" parent="."]
 
-[node name="Glass4" type="CSGBox3D" parent="Layer4"]
+[node name="Glass8" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, -4.7196045)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass5" type="CSGBox3D" parent="Layer4"]
+[node name="Glass9" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 0.2803955)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass6" type="CSGBox3D" parent="Layer4"]
+[node name="Glass10" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 5.2803955)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass7" type="CSGBox3D" parent="Layer4"]
+[node name="Glass11" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 10.2803955)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass8" type="CSGBox3D" parent="Layer4"]
+[node name="Glass12" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 15.2803955)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass9" type="CSGBox3D" parent="Layer4"]
+[node name="Glass13" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 20.280396)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass10" type="CSGBox3D" parent="Layer4"]
+[node name="Glass14" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 25.280396)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
-[node name="Glass11" type="CSGBox3D" parent="Layer4"]
+[node name="Glass15" type="CSGBox3D" parent="Layer4"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 30.280396)
 use_collision = true
 size = Vector3(4, 1, 4)
