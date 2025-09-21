@@ -107,16 +107,11 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 
 
 func disable_platform(platform: CSGBox3D):
-	platform.use_collision = false
 	platform_states[platform] = Glass.BROKEN  # Set state to BROKEN
-	change_platform_color(platform, Color.RED) 
-	print("Disabled platform: ", platform.name, " - State set to BROKEN")
+	print("Deleting platform: ", platform.name, " - State set to BROKEN")
 	
-	# Remove the Area3D to prevent further collision detection
-	var areas = platform.get_children().filter(func(child): return child is Area3D)
-	for area in areas:
-		print("Removing Area3D from broken platform: ", platform.name)
-		area.queue_free()
+	# Simply delete the platform
+	platform.queue_free()
 
 
 func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
