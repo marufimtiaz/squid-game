@@ -11,4 +11,4 @@ func _on_body_entered(body: Node3D) -> void:
 
 
 func _on_timer_timeout() -> void:
-	get_tree().change_scene_to_file("res://scenes/startmenu.tscn")
+	get_tree().change_scene_to_file("res://scenes/glassbridge/lose_screen.tscn")

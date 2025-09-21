@@ -1,0 +1,141 @@
+[gd_scene load_steps=10 format=3 uid="uid://b18k03e5xvgtu"]
+
+[ext_resource type="Script" uid="uid://crrf751mmjbou" path="res://scripts/startmenu.gd" id="1_ck0jh"]
+[ext_resource type="Texture2D" uid="uid://cwyi282uyxbrq" path="res://menu.png" id="2_bhqe3"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ids67"]
+texture = ExtResource("2_bhqe3")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u4tt2"]
+bg_color = Color(0.2166, 0.57, 0.24604997, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.19607843)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ids67"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.19, 0.5, 0.2158333, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_poymh"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1882353, 0.5019608, 0.21568628, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t0y3k"]
+bg_color = Color(0.65, 0.2925, 0.2925, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.19607843)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cy0qo"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.52, 0.23399998, 0.23399998, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+corner_detail = 5
+
+[sub_resource type="LabelSettings" id="LabelSettings_gwkhq"]
+font_size = 80
+
+[node name="EndScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ck0jh")
+
+[node name="Panel" type="Panel" parent="."]
+modulate = Color(0.30588236, 0.30588236, 0.30588236, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_ids67")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -136.0
+offset_top = -20.0
+offset_right = 136.0
+offset_bottom = 148.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StartGame1" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
+theme_override_styles/hover = SubResource("StyleBoxFlat_ids67")
+text = "Game 1"
+
+[node name="StartGame2" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
+theme_override_styles/hover = SubResource("StyleBoxFlat_poymh")
+text = "Game 2"
+
+[node name="Quit" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("StyleBoxFlat_t0y3k")
+theme_override_styles/hover = SubResource("StyleBoxFlat_cy0qo")
+text = "Quit"
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.965
+anchor_bottom = 0.965
+offset_top = 48.0
+offset_right = 40.32007
+offset_bottom = -258.32
+text = "You Lost!
+"
+label_settings = SubResource("LabelSettings_gwkhq")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[connection signal="pressed" from="VBoxContainer/StartGame1" to="." method="_on_start_game_1_pressed"]
+[connection signal="pressed" from="VBoxContainer/StartGame2" to="." method="_on_start_game_2_pressed"]
+[connection signal="pressed" from="VBoxContainer/Quit" to="." method="_on_quit_pressed"]
