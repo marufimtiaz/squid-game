@@ -1,6 +1,6 @@
 [gd_scene load_steps=10 format=3 uid="uid://eaujj8raxxx7"]
 
-[ext_resource type="Script" uid="uid://crrf751mmjbou" path="res://scripts/startmenu.gd" id="1_kr3cv"]
+[ext_resource type="Script" uid="uid://bvpnkurgxeyyh" path="res://scripts/glassbridge/pause_screen.gd" id="1_kr3cv"]
 [ext_resource type="Texture2D" uid="uid://cwyi282uyxbrq" path="res://menu.png" id="2_k52gc"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ids67"]
@@ -65,7 +65,7 @@ corner_detail = 5
 [sub_resource type="LabelSettings" id="LabelSettings_gwkhq"]
 font_size = 80
 
-[node name="EndScreen" type="Control"]
+[node name="PauseScreen" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -99,21 +99,21 @@ offset_bottom = 148.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="StartGame1" type="Button" parent="VBoxContainer"]
+[node name="Restart" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 27
 theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
 theme_override_styles/hover = SubResource("StyleBoxFlat_ids67")
-text = "Game 1"
+text = "Resume"
 
-[node name="StartGame2" type="Button" parent="VBoxContainer"]
+[node name="MainMenu" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 27
 theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
 theme_override_styles/hover = SubResource("StyleBoxFlat_poymh")
-text = "Game 2"
+text = "Main Menu"
 
 [node name="Quit" type="Button" parent="VBoxContainer"]
 layout_mode = 2
@@ -131,12 +131,14 @@ anchor_bottom = 0.965
 offset_top = 48.0
 offset_right = 40.32007
 offset_bottom = -258.32
-text = "Congratulations!
+text = "Game Paused
 "
 label_settings = SubResource("LabelSettings_gwkhq")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[connection signal="pressed" from="VBoxContainer/StartGame1" to="." method="_on_start_game_1_pressed"]
-[connection signal="pressed" from="VBoxContainer/StartGame2" to="." method="_on_start_game_2_pressed"]
+[connection signal="pressed" from="VBoxContainer/Restart" to="." method="_on_start_game_1_pressed"]
+[connection signal="pressed" from="VBoxContainer/Restart" to="." method="_on_resume_pressed"]
+[connection signal="pressed" from="VBoxContainer/MainMenu" to="." method="_on_start_game_2_pressed"]
+[connection signal="pressed" from="VBoxContainer/MainMenu" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Quit" to="." method="_on_quit_pressed"]
