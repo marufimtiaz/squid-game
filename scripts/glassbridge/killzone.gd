@@ -2,11 +2,12 @@ extends Area3D
 
 @onready var player: CharacterBody3D = $"../Player"
 
-# Reference to game manager for proper state handling
+# Reference to managers for proper state handling
 var game_manager: GameManager
+var player_manager: PlayerManager
 
 func _ready():
-	# Connect to player signals for better communication
+	# Connect to player signals for better communication (with new signatures)
 	if player:
 		player.player_hit_killzone.connect(_on_player_hit_killzone)
 		player.fallimpact_finished.connect(_on_player_fallimpact_finished)
@@ -15,9 +16,23 @@ func _ready():
 	var main_scene = get_parent()
 	if main_scene and main_scene.has_method("get") and main_scene.get("game_manager"):
 		game_manager = main_scene.game_manager
+	if main_scene and main_scene.has_method("get") and main_scene.get("player_manager"):
+		player_manager = main_scene.player_manager
 
 func _on_body_entered(body: Node3D) -> void:
-	if body == player:
+	# Check if the body is a managed player using PlayerManager
+	if player_manager and player_manager.is_valid_player(body):
+		print("Player entered killzone - triggering fallimpact")
+		# Trigger fallimpact animation and freeze player
+		var entered_player = body as CharacterBody3D
+		entered_player.play_fallimpact()
+		entered_player.release_mouse()
+		
+		# Notify game manager about player death
+		if game_manager:
+			game_manager.handle_player_death()
+	elif body == player:
+		# Fallback to direct player comparison for compatibility
 		print("Player entered killzone - triggering fallimpact")
 		# Trigger fallimpact animation and freeze player
 		player.play_fallimpact()
@@ -27,11 +42,11 @@ func _on_body_entered(body: Node3D) -> void:
 		if game_manager:
 			game_manager.handle_player_death()
 
-func _on_player_hit_killzone():
+func _on_player_hit_killzone(player_id: int):
 	# This gets called when the player plays the fallimpact animation
-	print("Player hit killzone - fallimpact animation triggered")
+	print("Player ", player_id, " hit killzone - fallimpact animation triggered")
 
-func _on_player_fallimpact_finished():
+func _on_player_fallimpact_finished(player_id: int):
 	# This gets called when the fallimpact animation finishes
-	print("Fallimpact animation finished - transitioning to lose screen")
+	print("Player ", player_id, " fallimpact animation finished - transitioning to lose screen")
 	get_tree().change_scene_to_file("res://scenes/glassbridge/lose_screen.tscn")

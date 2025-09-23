@@ -11,11 +11,11 @@ var brittle_timers = {}
 const BREAK_TIME: float = 1.0
 
 var game_node: Node3D
-var player: CharacterBody3D
+var player_manager: PlayerManager
 
-func _init(init_game_node: Node3D, init_player: CharacterBody3D):
+func _init(init_game_node: Node3D, init_player_manager: PlayerManager):
 	self.game_node = init_game_node
-	self.player = init_player
+	self.player_manager = init_player_manager
 
 func setup_platforms(layer3: Node, layer4: Node):
 	print("===== PLATFORM SETUP STARTING =====")
@@ -121,18 +121,20 @@ func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
 		print("Platform ", platform.name, " is not brittle anymore (state: ", platform_states[platform], ") - ignoring collision")
 		return
 	
-	print("Body type: ", body.get_class(), " Player type: ", player.get_class())
-	print("Is body the player? ", body == player)
+	var primary_player = player_manager.get_primary_player()
+	print("Body type: ", body.get_class(), " Player type: ", primary_player.get_class() if primary_player else "NULL")
+	print("Is body the primary player? ", body == primary_player)
 	
-	# Check if it's the player
-	if body == player:
-		print("CONFIRMED: Player stepped on brittle platform: ", platform.name)
-		start_brittle_timer(platform)
+	# Check if it's a managed player (future-proof for multiplayer)
+	if player_manager.is_valid_player(body):
+		var player_id = player_manager.get_player_id(body as CharacterBody3D)
+		print("CONFIRMED: Player ", player_id, " stepped on brittle platform: ", platform.name)
+		start_brittle_timer(platform, player_id)
 	else:
-		print("Not the player - ignoring collision with: ", body.name)
+		print("Not a managed player - ignoring collision with: ", body.name)
 
-func start_brittle_timer(platform: CSGBox3D):
-	print("start_brittle_timer called for platform: ", platform.name)
+func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
+	print("start_brittle_timer called for platform: ", platform.name, " by player: ", triggering_player_id)
 	
 	# Check platform state before starting timer
 	if platform_states[platform] != Glass.BRITTLE:
@@ -144,7 +146,7 @@ func start_brittle_timer(platform: CSGBox3D):
 		print("Timer already running for platform: ", platform.name, " - skipping")
 		return
 		
-	print("Starting 2-second timer for brittle platform: ", platform.name)
+	print("Starting ", BREAK_TIME, "-second timer for brittle platform: ", platform.name, " triggered by player: ", triggering_player_id)
 	change_platform_color(platform, Color.YELLOW)  # Change to yellow when timer starts
 	
 	# Create and start timer

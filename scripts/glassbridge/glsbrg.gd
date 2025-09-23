@@ -11,6 +11,7 @@ extends Node3D
 @onready var pause_screen: Control
 
 # Managers
+var player_manager: PlayerManager
 var platform_manager: PlatformManager
 var game_manager: GameManager
 
@@ -18,12 +19,15 @@ func _ready() -> void:
 	print("===== GAME SETUP STARTING =====")
 	print("Player node: ", (player.name as String) if player else "NULL")
 	
+	# Initialize player manager first
+	player_manager = PlayerManager.new(player)
+	
 	# Load and setup pause screen
 	setup_pause_screen()
 	
-	# Initialize managers
-	platform_manager = PlatformManager.new(self, player)
-	game_manager = GameManager.new(self, player, goaltimer)
+	# Initialize managers with player manager
+	platform_manager = PlatformManager.new(self, player_manager)
+	game_manager = GameManager.new(self, player_manager, goaltimer)
 	
 	# Connect game manager signals
 	game_manager.player_won.connect(_on_player_won)
@@ -38,6 +42,7 @@ func _ready() -> void:
 
 	if killzone and killzone.has_method("set"):
 		killzone.game_manager = game_manager
+		killzone.player_manager = player_manager
 	
 	print("===== GAME SETUP COMPLETE =====")
 
@@ -64,6 +69,8 @@ func _exit_tree():
 	# Clean up managers
 	if platform_manager:
 		platform_manager.cleanup()
+	if player_manager:
+		player_manager.cleanup()
 
 func setup_pause_screen():
 	"""Load and setup the pause screen"""
@@ -74,7 +81,9 @@ func setup_pause_screen():
 	# Make sure pause screen processes during pause
 	pause_screen.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	
-	# Pass player reference to pause screen
+	# Pass player manager reference to pause screen
+	pause_screen.player_manager = player_manager
+	# Keep legacy player reference for compatibility
 	pause_screen.player = player
 	
 	# Initially hide the pause screen

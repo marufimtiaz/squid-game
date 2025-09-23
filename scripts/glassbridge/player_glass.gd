@@ -6,6 +6,10 @@
 extends CharacterBody3D
 @onready var animation_player: AnimationPlayer = $Remy/AnimationPlayer
 
+# Player identification for multiplayer support
+@export var player_id: int = 1
+@export var player_name: String = "Player 1"
+
 ## Can we move around?
 @export var can_move : bool = true
 ## Are we affected by gravity?
@@ -68,11 +72,11 @@ var was_on_floor: bool = true
 var jump_time: float = 0.0
 var falling_time: float = 0.0
 
-# Signals for better communication
-signal player_hit_killzone
-signal player_victory_started
-signal fallimpact_finished
-signal victory_finished
+# Signals for better communication (now include player_id for multiplayer)
+signal player_hit_killzone(player_id: int)
+signal player_victory_started(player_id: int)
+signal fallimpact_finished(player_id: int)
+signal victory_finished(player_id: int)
 	
 
 
@@ -80,48 +84,54 @@ signal victory_finished
 @onready var head: Node3D = $Head
 @onready var collider: CollisionShape3D = $Collider
 
+# Helper function for consistent player logging
+func log_player(message: String):
+	print("[Player ", player_id, " - ", player_name, "] ", message)
+
 func freeze():
 	can_move = false
 	velocity.x = 0
 	velocity.y = 0
+	log_player("Player frozen")
 	
 func slow():
 	move_speed = base_speed/3
+	log_player("Player movement slowed")
 
 func play_fallimpact():
 	"""Play the fallimpact animation and emit signal for killzone handling"""
 	if current_state == PlayerState.IMPACT:
-		print("Already in IMPACT state - ignoring fallimpact request")
+		log_player("Already in IMPACT state - ignoring fallimpact request")
 		return
 		
-	print("Playing Fallimpact Animation.")
+	log_player("Playing Fallimpact Animation")
 	set_player_state(PlayerState.IMPACT)
 	animation_player.play(fallimpact_anim)
 	animation_player.seek(0.2, true)
-	player_hit_killzone.emit()
+	player_hit_killzone.emit(player_id)
 	# Freeze player after impact
 	call_deferred("freeze")
 
 func play_victory():
 	"""Play the victory animation"""
 	if current_state == PlayerState.VICTORY:
-		print("Already in VICTORY state - ignoring victory request")
+		log_player("Already in VICTORY state - ignoring victory request")
 		return
 		
-	print("Playing Victory Animation.")
+	log_player("Playing Victory Animation")
 	set_player_state(PlayerState.VICTORY)
 	can_move = false
 	velocity = Vector3.ZERO  # Stop all movement immediately
 	animation_player.play(victory_anim)
-	player_victory_started.emit()
+	player_victory_started.emit(player_id)
 
 func handle_goal_reached():
 	"""Handle when player reaches goal - set won state but wait for landing before victory animation"""
 	if current_state == PlayerState.VICTORY or current_state == PlayerState.WON_WAITING:
-		print("Already won - ignoring goal reached")
+		log_player("Already won - ignoring goal reached")
 		return
 	
-	print("Player reached goal! Setting won state...")
+	log_player("Player reached goal! Setting won state...")
 	# Stop movement immediately
 	can_move = false
 	velocity.x = 0
@@ -133,12 +143,12 @@ func handle_goal_reached():
 	else:
 		# If in air, wait for landing
 		set_player_state(PlayerState.WON_WAITING)
-		print("Player in air - waiting for landing before victory animation")
+		log_player("Player in air - waiting for landing before victory animation")
 
 func set_player_state(new_state: PlayerState):
 	"""Centralized state management with logging"""
 	if current_state != new_state:
-		print("Player state: ", PlayerState.keys()[current_state], " -> ", PlayerState.keys()[new_state])
+		log_player("State: " + PlayerState.keys()[current_state] + " -> " + PlayerState.keys()[new_state])
 		current_state = new_state
 
 func play_idle():
@@ -158,7 +168,7 @@ func play_walk():
 		animation_player.play(walk_anim)
 	
 func play_jump():
-	print("Playing Jump Animation")
+	log_player("Playing Jump Animation")
 	set_player_state(PlayerState.JUMPING)
 	animation_player.play(jump_anim)
 	animation_player.speed_scale = 0.9
@@ -166,7 +176,7 @@ func play_jump():
 	
 func play_falling():
 	if current_state != PlayerState.FALLING:
-		print("Playing Falling Animation")
+		log_player("Playing Falling Animation")
 		set_player_state(PlayerState.FALLING)
 		animation_player.speed_scale = 1.0
 		animation_player.play(fall_anim)
@@ -186,12 +196,12 @@ func _ready() -> void:
 
 func _on_animation_finished(animation_name: StringName):
 	"""Handle animation completion events"""
-	print("Animation finished: ", animation_name)
+	log_player("Animation finished: " + str(animation_name))
 	match animation_name:
 		fallimpact_anim:
-			fallimpact_finished.emit()
+			fallimpact_finished.emit(player_id)
 		victory_anim:
-			victory_finished.emit()
+			victory_finished.emit(player_id)
 		walk_anim:
 			# Don't auto-transition from walk - let _update_animation_state handle it
 			pass
@@ -354,7 +364,7 @@ func _update_animation_state(on_floor: bool, has_movement_input: bool, jump_pres
 		PlayerState.WON_WAITING:
 			# Player has won but needs to land first
 			if on_floor:
-				print("Player landed after winning - playing victory animation")
+				log_player("Player landed after winning - playing victory animation")
 				play_victory()
 			# Continue falling animation while waiting to land
 			elif velocity.y < -1.0 and animation_player.current_animation != fall_anim:
