@@ -62,7 +62,7 @@ var fallimpact_anim = "Remyanims/FallingFlatImpact"
 var victory_anim = "Remyanims/Victory"
 
 # Animation state tracking
-enum PlayerState { IDLE, WALKING, JUMPING, FALLING, IMPACT, VICTORY }
+enum PlayerState { IDLE, WALKING, JUMPING, FALLING, IMPACT, VICTORY, WON_WAITING }
 var current_state: PlayerState = PlayerState.IDLE
 var was_on_floor: bool = true
 var jump_time: float = 0.0
@@ -97,7 +97,7 @@ func play_fallimpact():
 	print("Playing Fallimpact Animation.")
 	set_player_state(PlayerState.IMPACT)
 	animation_player.play(fallimpact_anim)
-	animation_player.seek(0.4, true)
+	animation_player.seek(0.2, true)
 	player_hit_killzone.emit()
 	# Freeze player after impact
 	call_deferred("freeze")
@@ -110,9 +110,30 @@ func play_victory():
 		
 	print("Playing Victory Animation.")
 	set_player_state(PlayerState.VICTORY)
-	# can_move = false
+	can_move = false
+	velocity = Vector3.ZERO  # Stop all movement immediately
 	animation_player.play(victory_anim)
 	player_victory_started.emit()
+
+func handle_goal_reached():
+	"""Handle when player reaches goal - set won state but wait for landing before victory animation"""
+	if current_state == PlayerState.VICTORY or current_state == PlayerState.WON_WAITING:
+		print("Already won - ignoring goal reached")
+		return
+	
+	print("Player reached goal! Setting won state...")
+	# Stop movement immediately
+	can_move = false
+	velocity.x = 0
+	velocity.z = 0
+	
+	# If player is on ground, play victory immediately
+	if is_on_floor():
+		play_victory()
+	else:
+		# If in air, wait for landing
+		set_player_state(PlayerState.WON_WAITING)
+		print("Player in air - waiting for landing before victory animation")
 
 func set_player_state(new_state: PlayerState):
 	"""Centralized state management with logging"""
@@ -216,6 +237,19 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 	
+	# Handle won waiting state - allow gravity but no horizontal movement
+	if current_state == PlayerState.WON_WAITING:
+		# Apply gravity to let player land
+		if has_gravity and not current_on_floor:
+			velocity += get_gravity() * delta
+		# No horizontal movement
+		velocity.x = 0
+		velocity.z = 0
+		# Handle animation transitions for won waiting
+		_update_animation_state(current_on_floor, false, false, delta)
+		move_and_slide()
+		return
+	
 	# Apply gravity to velocity
 	if has_gravity:
 		if not current_on_floor:
@@ -305,6 +339,15 @@ func _update_animation_state(on_floor: bool, has_movement_input: bool, jump_pres
 					play_walk()
 				else:
 					play_idle()
+		
+		PlayerState.WON_WAITING:
+			# Player has won but needs to land first
+			if on_floor:
+				print("Player landed after winning - playing victory animation")
+				play_victory()
+			# Continue falling animation while waiting to land
+			elif velocity.y < -1.0 and animation_player.current_animation != fall_anim:
+				play_falling()
 		
 		PlayerState.IMPACT, PlayerState.VICTORY:
 			# These states are terminal - don't transition automatically

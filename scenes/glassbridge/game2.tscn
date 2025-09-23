@@ -18,7 +18,7 @@ sky = SubResource("Sky_7pxbb")
 tonemap_mode = 2
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_dflkw"]
-size = Vector3(11, 11, 39)
+size = Vector3(11, 1.017456, 39)
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_h21dd"]
 
@@ -38,11 +38,11 @@ shadow_enabled = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80.160194, 1.9073486e-06, 12.926406)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Platforms/FinishPlatform/Goal" index="0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008728027, 0)
 shape = SubResource("BoxShape3D_dflkw")
 
 [node name="Timer" type="Timer" parent="Platforms/FinishPlatform/Goal" index="1"]
-wait_time = 1.5
+wait_time = 4.0
 
 [node name="Glass1" parent="Platforms" index="2"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.415646, 1.9073486e-06, 11.745406)

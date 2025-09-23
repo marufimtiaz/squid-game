@@ -57,8 +57,8 @@ func handle_player_death():
 
 func _handle_player_won():
 	print("Handling player win...")
-	# Trigger victory animation on player
-	player.play_victory()
+	# Use the new goal reached handler that waits for landing
+	player.handle_goal_reached()
 	player.release_mouse()
 	# Start goal timer as backup, but victory_finished signal will be primary trigger
 	if goal_timer:
