@@ -31,6 +31,8 @@ extends CharacterBody3D
 
 @export_group("Input Actions")
 ## Name of Input Action to move Left.
+@export var input_cancel : String = "ui_cancel"
+## Name of Input Action to move Left.
 @export var input_left : String = "ui_left"
 ## Name of Input Action to move Right.
 @export var input_right : String = "ui_right"
@@ -55,7 +57,22 @@ var is_jump_starting : bool = false
 var idle_anim = "Remyanims/Idle"
 var walk_anim = "Remyanims/Walk"
 var jump_anim = "Remyanims/Jump"
+var fall_anim = "Remyanims/Falling"
+var fallimpact_anim = "Remyanims/FallingFlatImpact"
+var victory_anim = "Remyanims/Victory"
 
+# Animation state tracking
+enum PlayerState { IDLE, WALKING, JUMPING, FALLING, IMPACT, VICTORY }
+var current_state: PlayerState = PlayerState.IDLE
+var was_on_floor: bool = true
+var jump_time: float = 0.0
+var falling_time: float = 0.0
+
+# Signals for better communication
+signal player_hit_killzone
+signal player_victory_started
+signal fallimpact_finished
+signal victory_finished
 	
 
 
@@ -70,15 +87,99 @@ func freeze():
 	
 func slow():
 	move_speed = base_speed/3
+
+func play_fallimpact():
+	"""Play the fallimpact animation and emit signal for killzone handling"""
+	if current_state == PlayerState.IMPACT:
+		print("Already in IMPACT state - ignoring fallimpact request")
+		return
+		
+	print("Playing Fallimpact Animation.")
+	set_player_state(PlayerState.IMPACT)
+	animation_player.play(fallimpact_anim)
+	animation_player.seek(0.4, true)
+	player_hit_killzone.emit()
+	# Freeze player after impact
+	call_deferred("freeze")
+
+func play_victory():
+	"""Play the victory animation"""
+	if current_state == PlayerState.VICTORY:
+		print("Already in VICTORY state - ignoring victory request")
+		return
+		
+	print("Playing Victory Animation.")
+	set_player_state(PlayerState.VICTORY)
+	# can_move = false
+	animation_player.play(victory_anim)
+	player_victory_started.emit()
+
+func set_player_state(new_state: PlayerState):
+	"""Centralized state management with logging"""
+	if current_state != new_state:
+		print("Player state: ", PlayerState.keys()[current_state], " -> ", PlayerState.keys()[new_state])
+		current_state = new_state
+
+func play_idle():
+	if current_state != PlayerState.IDLE:
+		set_player_state(PlayerState.IDLE)
+		animation_player.speed_scale = 1.0
+		animation_player.play(idle_anim)
+
+func play_walk():
+	if current_state != PlayerState.WALKING:
+		set_player_state(PlayerState.WALKING)
+		animation_player.speed_scale = 1.0
+		animation_player.play(walk_anim)
+	# Keep the walk animation looping while in walking state
+	elif animation_player.current_animation != walk_anim:
+		animation_player.speed_scale = 1.0
+		animation_player.play(walk_anim)
 	
+func play_jump():
+	print("Playing Jump Animation")
+	set_player_state(PlayerState.JUMPING)
+	animation_player.play(jump_anim)
+	animation_player.speed_scale = 0.9
+	animation_player.seek(0.4, true)
+	
+func play_falling():
+	if current_state != PlayerState.FALLING:
+		print("Playing Falling Animation")
+		set_player_state(PlayerState.FALLING)
+		animation_player.speed_scale = 1.0
+		animation_player.play(fall_anim)
 	
 func _ready() -> void:
 	check_input_mappings()
 	look_rotation.y = rotation.y
 	look_rotation.x = head.rotation.x
 	
-
+	# Connect animation finished signal
+	animation_player.animation_finished.connect(_on_animation_finished)
+	
 	animation_player.play(idle_anim)
+
+func _on_animation_finished(animation_name: StringName):
+	"""Handle animation completion events"""
+	print("Animation finished: ", animation_name)
+	match animation_name:
+		fallimpact_anim:
+			fallimpact_finished.emit()
+		victory_anim:
+			victory_finished.emit()
+		walk_anim:
+			# Don't auto-transition from walk - let _update_animation_state handle it
+			pass
+		jump_anim:
+			# Don't auto-transition from jump - let _update_animation_state handle it
+			pass
+		fall_anim:
+			# Don't auto-transition from fall - let _update_animation_state handle it
+			pass
+		idle_anim:
+			# Don't auto-transition from idle - let _update_animation_state handle it
+			pass
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Mouse capturing
@@ -99,6 +200,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			disable_freefly()
 
 func _physics_process(delta: float) -> void:
+	# Track floor state for fall detection
+	var current_on_floor = is_on_floor()
+	
 	# If freeflying, handle freefly and nothing else
 	if can_freefly and freeflying:
 		var input_dir := Input.get_vector(input_left, input_right, input_forward, input_back)
@@ -107,19 +211,25 @@ func _physics_process(delta: float) -> void:
 		move_and_collide(motion)
 		return
 	
+	# Don't process movement if in special states
+	if current_state == PlayerState.IMPACT or current_state == PlayerState.VICTORY:
+		move_and_slide()
+		return
+	
 	# Apply gravity to velocity
 	if has_gravity:
-		if not is_on_floor():
+		if not current_on_floor:
 			velocity += get_gravity() * delta
 
-	# Apply jumping
-	if can_jump:
-		if Input.is_action_just_pressed(input_jump) and is_on_floor():
-			velocity.y = jump_velocity
-			animation_player.play(jump_anim)
-			animation_player.speed_scale = 1  # Change the jump animation speed
-			# Skip the first few frames (adjust 0.5 to skip more/fewer frames)
-			animation_player.seek(0.4, true)
+	# Track timing for animation transitions
+	if not current_on_floor and velocity.y < 0:
+		falling_time += delta
+	else:
+		falling_time = 0.0
+
+	# Track jump time for fall transition
+	if current_state == PlayerState.JUMPING and not current_on_floor:
+		jump_time += delta
 
 	# Modify speed based on sprinting
 	if can_sprint and Input.is_action_pressed(input_sprint):
@@ -134,32 +244,71 @@ func _physics_process(delta: float) -> void:
 		if move_dir:
 			velocity.x = move_dir.x * move_speed
 			velocity.z = move_dir.z * move_speed
-			# Only play walk animation if on floor and moving (and not jumping)
-			if is_on_floor() and not Input.is_action_just_pressed(input_jump):
-				animation_player.speed_scale = 1.0  # Reset speed to normal
-				animation_player.play(walk_anim)
 		else:
 			velocity.x = move_toward(velocity.x, 0, move_speed)
 			velocity.z = move_toward(velocity.z, 0, move_speed)
-			# Only play idle animation if on floor (and not jumping)
-			if is_on_floor() and not Input.is_action_just_pressed(input_jump):
-				animation_player.speed_scale = 1.0  # Reset speed to normal
-				animation_player.play(idle_anim)
 	else:
 		velocity.x = 0
 		velocity.y = 0
-		# Only play idle if not jumping
-		if not Input.is_action_just_pressed(input_jump):
-			animation_player.speed_scale = 1.0  # Reset speed to normal
-			animation_player.play(idle_anim)
 	
-	# If we're in the air and not on floor, keep jump animation playing
-	if not is_on_floor() and animation_player.current_animation != jump_anim:
-		#animation_player.speed_scale = 1.5  # Keep double speed for jump
-		animation_player.play(idle_anim)
+	# Handle animation state transitions based on current state and conditions
+	var movement_input := Input.get_vector(input_left, input_right, input_forward, input_back)
+	var has_movement_input = movement_input.length() > 0
+	var jump_pressed = can_jump and Input.is_action_just_pressed(input_jump)
+	_update_animation_state(current_on_floor, has_movement_input, jump_pressed, delta)
+	
+	# Store previous floor state
+	was_on_floor = current_on_floor
 	
 	# Use velocity to actually move
 	move_and_slide()
+
+func _update_animation_state(on_floor: bool, has_movement_input: bool, jump_pressed: bool, _delta: float):
+	"""Centralized animation state logic"""
+	
+	# Handle jump input - highest priority
+	if jump_pressed and on_floor:
+		velocity.y = jump_velocity
+		jump_time = 0.0
+		play_jump()
+		return
+	
+	match current_state:
+		PlayerState.IDLE, PlayerState.WALKING:
+			if not on_floor:
+				# Started falling (walked off or platform disappeared)
+				if velocity.y < -1.0:
+					play_falling()
+			elif on_floor and can_move:
+				if has_movement_input:
+					play_walk()
+				else:
+					play_idle()
+		
+		PlayerState.JUMPING:
+			# Stay in jumping state until we transition to falling or land
+			if jump_time > 0.4 and velocity.y < -4.5:
+				# Transition from jump to fall
+				play_falling()
+			elif on_floor:
+				# Landed - check if moving or idle
+				if can_move and has_movement_input:
+					play_walk()
+				else:
+					play_idle()
+			# If still jumping (on_floor=false, jump_time<=0.3, velocity.y>=-1.0), stay in JUMPING
+		
+		PlayerState.FALLING:
+			if on_floor:
+				# Landed - check if moving or idle
+				if can_move and has_movement_input:
+					play_walk()
+				else:
+					play_idle()
+		
+		PlayerState.IMPACT, PlayerState.VICTORY:
+			# These states are terminal - don't transition automatically
+			pass
 
 
 ## Rotate us to look around.

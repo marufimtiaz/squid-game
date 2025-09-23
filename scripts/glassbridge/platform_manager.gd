@@ -11,9 +11,9 @@ var brittle_timers = {}
 var game_node: Node3D
 var player: CharacterBody3D
 
-func _init(game_node: Node3D, player: CharacterBody3D):
-	self.game_node = game_node
-	self.player = player
+func _init(init_game_node: Node3D, init_player: CharacterBody3D):
+	self.game_node = init_game_node
+	self.player = init_player
 
 func setup_platforms(layer3: Node, layer4: Node):
 	print("===== PLATFORM SETUP STARTING =====")

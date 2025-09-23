@@ -13,14 +13,19 @@ signal player_won
 signal player_died
 signal state_changed(new_state: State)
 
-func _init(game_node: Node3D, player: CharacterBody3D, goal_timer: Timer):
-	self.game_node = game_node
-	self.player = player
-	self.goal_timer = goal_timer
+func _init(_game_node: Node3D, _player: CharacterBody3D, _goal_timer: Timer):
+	self.game_node = _game_node
+	self.player = _player
+	self.goal_timer = _goal_timer
 	
-	# Connect goal timer signal
-	if goal_timer:
-		goal_timer.timeout.connect(_on_goal_timer_timeout)
+	# Connect goal timer signal (for backup timing)
+	if _goal_timer:
+		_goal_timer.timeout.connect(_on_goal_timer_timeout)
+	
+	# Connect player signals
+	if _player:
+		_player.player_victory_started.connect(_on_player_victory_started)
+		_player.victory_finished.connect(_on_player_victory_finished)
 
 func get_current_state() -> State:
 	return state
@@ -47,24 +52,38 @@ func handle_player_death():
 	if state == State.PLAYING:
 		print("Player died!")
 		set_state(State.DEAD)
+	else:
+		print("Player death ignored - game state is already: ", State.keys()[state])
 
 func _handle_player_won():
 	print("Handling player win...")
-	player.slow()
+	# Trigger victory animation on player
+	player.play_victory()
 	player.release_mouse()
+	# Start goal timer as backup, but victory_finished signal will be primary trigger
 	if goal_timer:
 		goal_timer.start()
 	player_won.emit()
 
 func _handle_player_died():
 	print("Handling player death...")
-	# Add any death-specific logic here
+	# Death is now handled by killzone waiting for fallimpact_finished
 	player_died.emit()
 
-func _on_goal_timer_timeout():
-	print("Goal timer expired, transitioning to end screen...")
+func _on_player_victory_started():
+	print("Player victory animation started")
+
+func _on_player_victory_finished():
+	print("Player victory animation finished - transitioning to end screen")
 	player.freeze()
 	game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
+
+func _on_goal_timer_timeout():
+	print("Goal timer backup timeout - transitioning to end screen...")
+	# This is now a backup - the primary trigger should be victory_finished
+	if state == State.WON:
+		player.freeze()
+		game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
 
 func is_playing() -> bool:
 	return state == State.PLAYING

@@ -5,6 +5,7 @@ extends Node3D
 @onready var goaltimer: Timer = $Platforms/FinishPlatform/Goal/Timer
 @onready var layer3: Node = $Platforms/Layer3
 @onready var layer4: Node = $Platforms/Layer4
+@onready var killzone: Area3D = $Killzone
 
 # Managers
 var platform_manager: PlatformManager
@@ -25,6 +26,12 @@ func _ready() -> void:
 	
 	# Setup platforms using the platform manager
 	platform_manager.setup_platforms(layer3, layer4)
+	
+	# Setup killzone reference to game manager
+	#var killzone = $KillZone
+
+	if killzone and killzone.has_method("set"):
+		killzone.game_manager = game_manager
 	
 	print("===== GAME SETUP COMPLETE =====")
 
