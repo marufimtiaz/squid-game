@@ -121,11 +121,7 @@ func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
 		print("Platform ", platform.name, " is not brittle anymore (state: ", platform_states[platform], ") - ignoring collision")
 		return
 	
-	var primary_player = player_manager.get_primary_player()
-	print("Body type: ", body.get_class(), " Player type: ", primary_player.get_class() if primary_player else "NULL")
-	print("Is body the primary player? ", body == primary_player)
-	
-	# Check if it's a managed player (future-proof for multiplayer)
+	# Check if it's any managed player (multiplayer-ready logic)
 	if player_manager.is_valid_player(body):
 		var player_id = player_manager.get_player_id(body as CharacterBody3D)
 		print("CONFIRMED: Player ", player_id, " stepped on brittle platform: ", platform.name)
