@@ -41,11 +41,18 @@ func freeze_all_players():
 		if player and player.has_method("freeze"):
 			player.freeze()
 
+# Mouse handling methods (centralized for multiplayer support)
+func capture_mouse():
+	"""Capture mouse for the game"""
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func release_mouse():
+	"""Release mouse capture"""
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
 func release_mouse_all_players():
-	"""Release mouse capture for all players"""
-	for player in _players:
-		if player and player.has_method("release_mouse"):
-			player.release_mouse()
+	"""Legacy method - now just calls release_mouse()"""
+	release_mouse()
 
 # Future methods for multiplayer (currently just work with primary player)
 func add_player(player: CharacterBody3D) -> bool:

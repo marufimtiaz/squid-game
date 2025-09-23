@@ -44,6 +44,9 @@ func _ready() -> void:
 		killzone.game_manager = game_manager
 		killzone.player_manager = player_manager
 	
+	# Auto-capture mouse when game starts (centralized input handling)
+	player_manager.capture_mouse()
+	
 	print("===== GAME SETUP COMPLETE =====")
 
 
@@ -90,11 +93,24 @@ func setup_pause_screen():
 	pause_screen.visible = false
 
 func _unhandled_input(event: InputEvent):
-	"""Handle pause input"""
+	"""Handle pause input and centralized mouse control"""
+	# Pause handling
 	if event.is_action_pressed("ui_cancel"):  # ESC key
 		if get_tree().paused:
 			pause_screen.resume_game()
 		else:
 			pause_screen.show_pause()
+	
+	# Centralized mouse handling (Step 5: moved from player script)
+	if get_tree().paused:
+		return
+		
+	# Capture mouse with left click
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		player_manager.capture_mouse()
+		
+	# Release mouse with ALT key
+	if event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
+		player_manager.release_mouse()
 	
 	

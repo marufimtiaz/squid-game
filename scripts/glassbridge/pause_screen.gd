@@ -25,20 +25,18 @@ func show_pause():
 	"""Show the pause screen and pause the game"""
 	visible = true
 	get_tree().paused = true
-	# Release mouse when pausing
+	# Release mouse when pausing (centralized)
 	if player_manager:
-		player_manager.release_mouse_all_players()
-	elif player:
+		player_manager.release_mouse()
+	elif player and player.has_method("release_mouse"):
 		player.release_mouse()
 
 func resume_game():
 	"""Hide the pause screen and resume the game"""
 	visible = false
 	get_tree().paused = false
-	# Re-capture mouse when resuming
+	# Re-capture mouse when resuming (centralized)
 	if player_manager:
-		var primary_player = player_manager.get_primary_player()
-		if primary_player and primary_player.has_method("resume_from_pause"):
-			primary_player.resume_from_pause()
-	elif player:
+		player_manager.capture_mouse()
+	elif player and player.has_method("resume_from_pause"):
 		player.resume_from_pause()

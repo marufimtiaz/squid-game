@@ -51,7 +51,8 @@ extends CharacterBody3D
 ## Name of Input Action to toggle freefly mode.
 @export var input_freefly : String = "freefly"
 
-var mouse_captured : bool = false
+# mouse_captured is no longer used (Step 5: moved to scene level)
+# var mouse_captured : bool = false
 var look_rotation : Vector2
 var move_speed : float = 0.0
 var freeflying : bool = false
@@ -191,8 +192,7 @@ func _ready() -> void:
 	
 	animation_player.play(idle_anim)
 	
-	# Auto-capture mouse when game starts
-	capture_mouse()
+	# Mouse capture is now handled by main scene (Step 5)
 
 func _on_animation_finished(animation_name: StringName):
 	"""Handle animation completion events"""
@@ -219,15 +219,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Don't process input if game is paused
 	if get_tree().paused:
 		return
-	# Capture mouse with left click
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		capture_mouse()	
-	# Release mouse with ALT key
-	if event.is_action_pressed("ui_cancel") or event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
-		release_mouse()
-	
-	# Look around
-	if mouse_captured and event is InputEventMouseMotion:
+		
+	# Look around (mouse capture is now handled by main scene)
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and event is InputEventMouseMotion:
 		rotate_look(event.relative)
 	
 	# Toggle freefly mode
@@ -397,19 +391,18 @@ func disable_freefly():
 	collider.disabled = false
 	freeflying = false
 
+# Mouse handling moved to scene level (Step 5)
+# func capture_mouse():
+# 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+# 	mouse_captured = true
 
-func capture_mouse():
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	mouse_captured = true
+# func release_mouse():
+# 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+# 	mouse_captured = false
 
-
-func release_mouse():
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	mouse_captured = false
-
-func resume_from_pause():
-	"""Called when resuming from pause to re-capture mouse"""
-	capture_mouse()
+# func resume_from_pause():
+# 	"""Called when resuming from pause to re-capture mouse"""
+# 	capture_mouse()
 
 
 ## Checks if some Input Actions haven't been created.

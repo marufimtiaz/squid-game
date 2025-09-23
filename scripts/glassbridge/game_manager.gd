@@ -84,7 +84,8 @@ func _handle_player_won(player_id: int):
 	var player = player_manager.get_player_by_id(player_id)
 	if player:
 		player.handle_goal_reached()
-		player.release_mouse()
+	# Release mouse centrally when player wins
+	player_manager.release_mouse()
 	# Start goal timer as backup, but victory_finished signal will be primary trigger
 	if goal_timer:
 		goal_timer.start()

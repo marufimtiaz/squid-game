@@ -26,7 +26,8 @@ func _on_body_entered(body: Node3D) -> void:
 		# Trigger fallimpact animation and freeze player
 		var entered_player = body as CharacterBody3D
 		entered_player.play_fallimpact()
-		entered_player.release_mouse()
+		# Release mouse centrally when player dies
+		player_manager.release_mouse()
 		
 		# Notify game manager about player death
 		if game_manager:
@@ -36,7 +37,8 @@ func _on_body_entered(body: Node3D) -> void:
 		print("Player entered killzone - triggering fallimpact")
 		# Trigger fallimpact animation and freeze player
 		player.play_fallimpact()
-		player.release_mouse()
+		# Release mouse centrally when player dies
+		player_manager.release_mouse()
 		
 		# Notify game manager about player death
 		if game_manager:
