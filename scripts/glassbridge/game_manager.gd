@@ -58,6 +58,8 @@ func set_player_state(player_id: int, new_state: State):
 				_handle_player_won(player_id)
 			State.DEAD:
 				_handle_player_died(player_id)
+		
+		# Step 6: Don't check game end immediately - wait for animations
 
 func handle_goal_reached(body: Node3D):
 	if player_manager.is_valid_player(body):
@@ -100,20 +102,14 @@ func _on_player_victory_started(player_id: int):
 	print("Player ", player_id, " victory animation started")
 
 func _on_player_victory_finished(player_id: int):
-	print("Player ", player_id, " victory animation finished - transitioning to end screen")
-	player_manager.freeze_all_players()
-	game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
+	print("Player ", player_id, " victory animation finished")
+	# Step 6: Don't transition immediately - check if all players done
+	call_deferred("check_and_handle_game_end")
 
 func _on_goal_timer_timeout():
-	print("Goal timer backup timeout - transitioning to end screen...")
-	# This is now a backup - the primary trigger should be victory_finished
-	# Check if primary player won
-	var primary_player = player_manager.get_primary_player()
-	if primary_player:
-		var player_id = player_manager.get_player_id(primary_player)
-		if get_player_state(player_id) == State.WON:
-			player_manager.freeze_all_players()
-			game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
+	print("Goal timer backup timeout")
+	# Step 6: Check if all players done instead of immediate transition
+	call_deferred("check_and_handle_game_end")
 
 func is_playing() -> bool:
 	# Check if primary player is playing (compatibility)
@@ -122,6 +118,45 @@ func is_playing() -> bool:
 		var player_id = player_manager.get_player_id(primary_player)
 		return get_player_state(player_id) == State.PLAYING
 	return false
+
+# Step 6: Multi-player scene transition logic
+func is_game_finished() -> bool:
+	"""Check if all players have finished (won or died)"""
+	for player in player_manager.get_all_players():
+		var player_id = player_manager.get_player_id(player)
+		var state = get_player_state(player_id)
+		if state == State.PLAYING:
+			return false  # At least one player still playing
+	return true
+
+func get_game_result() -> String:
+	"""Determine overall game result for scene transition"""
+	var won_count = 0
+	
+	for player in player_manager.get_all_players():
+		var player_id = player_manager.get_player_id(player)
+		var state = get_player_state(player_id)
+		if state == State.WON:
+			won_count += 1
+	
+	if won_count > 0:
+		return "win"  # At least one player won
+	else:
+		return "lose"  # All players died
+
+func check_and_handle_game_end():
+	"""Check if game is finished and transition to appropriate screen"""
+	if is_game_finished():
+		print("All players finished - transitioning based on result...")
+		player_manager.freeze_all_players()
+		var result = get_game_result()
+		match result:
+			"win":
+				# Use call_deferred to avoid physics callback issues
+				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
+			"lose":
+				# Use call_deferred to avoid physics callback issues
+				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
 
 func is_won() -> bool:
 	# Check if primary player won (compatibility)

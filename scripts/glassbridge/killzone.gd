@@ -50,5 +50,12 @@ func _on_player_hit_killzone(player_id: int):
 
 func _on_player_fallimpact_finished(player_id: int):
 	# This gets called when the fallimpact animation finishes
-	print("Player ", player_id, " fallimpact animation finished - transitioning to lose screen")
-	get_tree().change_scene_to_file("res://scenes/glassbridge/lose_screen.tscn")
+	print("Player ", player_id, " fallimpact animation finished")
+	# Step 6: Now check if all players are done (after death animation)
+	if game_manager:
+		call_deferred("_check_game_end_deferred")
+
+func _check_game_end_deferred():
+	"""Deferred call to check game end to avoid physics callback issues"""
+	if game_manager:
+		game_manager.check_and_handle_game_end()
