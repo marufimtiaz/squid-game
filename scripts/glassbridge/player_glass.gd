@@ -180,6 +180,9 @@ func _ready() -> void:
 	animation_player.animation_finished.connect(_on_animation_finished)
 	
 	animation_player.play(idle_anim)
+	
+	# Auto-capture mouse when game starts
+	capture_mouse()
 
 func _on_animation_finished(animation_name: StringName):
 	"""Handle animation completion events"""
@@ -203,10 +206,14 @@ func _on_animation_finished(animation_name: StringName):
 			pass
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Mouse capturing
+	# Don't process input if game is paused
+	if get_tree().paused:
+		return
+	# Capture mouse with left click
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		capture_mouse()
-	if Input.is_key_pressed(KEY_ESCAPE):
+		capture_mouse()	
+	# Release mouse with ALT key
+	if event.is_action_pressed("ui_cancel") or event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
 		release_mouse()
 	
 	# Look around
@@ -221,6 +228,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			disable_freefly()
 
 func _physics_process(delta: float) -> void:
+	# Don't process physics if game is paused
+	if get_tree().paused:
+		return
+		
 	# Track floor state for fall detection
 	var current_on_floor = is_on_floor()
 	
@@ -385,6 +396,10 @@ func capture_mouse():
 func release_mouse():
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	mouse_captured = false
+
+func resume_from_pause():
+	"""Called when resuming from pause to re-capture mouse"""
+	capture_mouse()
 
 
 ## Checks if some Input Actions haven't been created.

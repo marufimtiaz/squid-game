@@ -1,10 +1,36 @@
 extends Control
 
+# Reference to player for mouse handling (set by main game script)
+var player: CharacterBody3D
+
+func _ready():
+	# Make sure the pause screen is initially hidden
+	visible = false
+
 func _on_resume_pressed() -> void:
-	get_tree().reload_current_scene()
+	# Resume the game instead of reloading the scene
+	resume_game()
 
 func _on_main_menu_pressed() -> void:
+	# Unpause before changing scene
+	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/startmenu.tscn")
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+func show_pause():
+	"""Show the pause screen and pause the game"""
+	visible = true
+	get_tree().paused = true
+	# Release mouse when pausing
+	if player:
+		player.release_mouse()
+
+func resume_game():
+	"""Hide the pause screen and resume the game"""
+	visible = false
+	get_tree().paused = false
+	# Re-capture mouse when resuming
+	if player:
+		player.resume_from_pause()

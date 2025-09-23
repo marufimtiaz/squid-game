@@ -7,6 +7,9 @@ extends Node3D
 @onready var layer4: Node = $Platforms/Layer4
 @onready var killzone: Area3D = $Killzone
 
+# Pause screen
+@onready var pause_screen: Control
+
 # Managers
 var platform_manager: PlatformManager
 var game_manager: GameManager
@@ -14,6 +17,9 @@ var game_manager: GameManager
 func _ready() -> void:
 	print("===== GAME SETUP STARTING =====")
 	print("Player node: ", (player.name as String) if player else "NULL")
+	
+	# Load and setup pause screen
+	setup_pause_screen()
 	
 	# Initialize managers
 	platform_manager = PlatformManager.new(self, player)
@@ -58,5 +64,28 @@ func _exit_tree():
 	# Clean up managers
 	if platform_manager:
 		platform_manager.cleanup()
+
+func setup_pause_screen():
+	"""Load and setup the pause screen"""
+	var pause_scene = preload("res://scenes/glassbridge/pause_screen.tscn")
+	pause_screen = pause_scene.instantiate()
+	add_child(pause_screen)
+	
+	# Make sure pause screen processes during pause
+	pause_screen.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	
+	# Pass player reference to pause screen
+	pause_screen.player = player
+	
+	# Initially hide the pause screen
+	pause_screen.visible = false
+
+func _unhandled_input(event: InputEvent):
+	"""Handle pause input"""
+	if event.is_action_pressed("ui_cancel"):  # ESC key
+		if get_tree().paused:
+			pause_screen.resume_game()
+		else:
+			pause_screen.show_pause()
 	
 	
