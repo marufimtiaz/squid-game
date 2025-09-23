@@ -3,20 +3,26 @@ extends RefCounted
 
 enum State { PLAYING, DEAD, WON }
 
-var state: State = State.PLAYING
+# Per-player state tracking (multiplayer-ready)
+var player_states: Dictionary = {}  # player_id -> State
 var player_manager: PlayerManager
 var goal_timer: Timer
 var game_node: Node3D
 
-# Signals to communicate with main game
-signal player_won
-signal player_died
-signal state_changed(new_state: State)
+# Signals to communicate with main game (now include player_id)
+signal player_won(player_id: int)
+signal player_died(player_id: int)
+signal state_changed(player_id: int, new_state: State)
 
 func _init(_game_node: Node3D, _player_manager: PlayerManager, _goal_timer: Timer):
 	self.game_node = _game_node
 	self.player_manager = _player_manager
 	self.goal_timer = _goal_timer
+	
+	# Initialize all players to PLAYING state
+	for player in _player_manager.get_all_players():
+		var player_id = _player_manager.get_player_id(player)
+		player_states[player_id] = State.PLAYING
 	
 	# Connect goal timer signal (for backup timing)
 	if _goal_timer:
@@ -29,49 +35,65 @@ func _init(_game_node: Node3D, _player_manager: PlayerManager, _goal_timer: Time
 		primary_player.victory_finished.connect(_on_player_victory_finished)
 
 func get_current_state() -> State:
-	return state
+	# For compatibility, return primary player state
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		return player_states.get(player_id, State.PLAYING)
+	return State.PLAYING
 
-func set_state(new_state: State):
-	if state != new_state:
-		var old_state = state
-		state = new_state
-		print("Game state changed from ", State.keys()[old_state], " to ", State.keys()[new_state])
-		state_changed.emit(new_state)
+func get_player_state(player_id: int) -> State:
+	return player_states.get(player_id, State.PLAYING)
+
+func set_player_state(player_id: int, new_state: State):
+	var current_state = player_states.get(player_id, State.PLAYING)
+	if current_state != new_state:
+		var old_state = current_state
+		player_states[player_id] = new_state
+		print("Player ", player_id, " state changed from ", State.keys()[old_state], " to ", State.keys()[new_state])
+		state_changed.emit(player_id, new_state)
 		
 		match new_state:
 			State.WON:
-				_handle_player_won()
+				_handle_player_won(player_id)
 			State.DEAD:
-				_handle_player_died()
+				_handle_player_died(player_id)
 
 func handle_goal_reached(body: Node3D):
-	if player_manager.is_valid_player(body) and state == State.PLAYING:
-		print("Player reached the goal!")
-		set_state(State.WON)
+	if player_manager.is_valid_player(body):
+		var player_id = player_manager.get_player_id(body as CharacterBody3D)
+		var current_state = get_player_state(player_id)
+		if current_state == State.PLAYING:
+			print("Player ", player_id, " reached the goal!")
+			set_player_state(player_id, State.WON)
 
 func handle_player_death():
-	if state == State.PLAYING:
-		print("Player died!")
-		set_state(State.DEAD)
-	else:
-		print("Player death ignored - game state is already: ", State.keys()[state])
-
-func _handle_player_won():
-	print("Handling player win...")
+	# For now, handle primary player death (Step 6 will make this per-player)
 	var primary_player = player_manager.get_primary_player()
-	# Use the new goal reached handler that waits for landing
 	if primary_player:
-		primary_player.handle_goal_reached()
-		primary_player.release_mouse()
+		var player_id = player_manager.get_player_id(primary_player)
+		var current_state = get_player_state(player_id)
+		if current_state == State.PLAYING:
+			print("Player ", player_id, " died!")
+			set_player_state(player_id, State.DEAD)
+		else:
+			print("Player ", player_id, " death ignored - already in state: ", State.keys()[current_state])
+
+func _handle_player_won(player_id: int):
+	print("Handling player ", player_id, " win...")
+	var player = player_manager.get_player_by_id(player_id)
+	if player:
+		player.handle_goal_reached()
+		player.release_mouse()
 	# Start goal timer as backup, but victory_finished signal will be primary trigger
 	if goal_timer:
 		goal_timer.start()
-	player_won.emit()
+	player_won.emit(player_id)
 
-func _handle_player_died():
-	print("Handling player death...")
+func _handle_player_died(player_id: int):
+	print("Handling player ", player_id, " death...")
 	# Death is now handled by killzone waiting for fallimpact_finished
-	player_died.emit()
+	player_died.emit(player_id)
 
 func _on_player_victory_started(player_id: int):
 	print("Player ", player_id, " victory animation started")
@@ -84,20 +106,41 @@ func _on_player_victory_finished(player_id: int):
 func _on_goal_timer_timeout():
 	print("Goal timer backup timeout - transitioning to end screen...")
 	# This is now a backup - the primary trigger should be victory_finished
-	if state == State.WON:
-		player_manager.freeze_all_players()
-		game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
+	# Check if primary player won
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		if get_player_state(player_id) == State.WON:
+			player_manager.freeze_all_players()
+			game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
 
 func is_playing() -> bool:
-	return state == State.PLAYING
+	# Check if primary player is playing (compatibility)
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		return get_player_state(player_id) == State.PLAYING
+	return false
 
 func is_won() -> bool:
-	return state == State.WON
+	# Check if primary player won (compatibility)
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		return get_player_state(player_id) == State.WON
+	return false
 
 func is_dead() -> bool:
-	return state == State.DEAD
+	# Check if primary player is dead (compatibility)
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		return get_player_state(player_id) == State.DEAD
+	return false
 
 func reset_game():
-	set_state(State.PLAYING)
+	# Reset all players to PLAYING state
+	for player_id in player_states.keys():
+		player_states[player_id] = State.PLAYING
 	if goal_timer:
 		goal_timer.stop()

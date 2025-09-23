@@ -48,14 +48,14 @@ func _ready() -> void:
 
 
 # Signal handlers for game manager
-func _on_player_won():
-	print("Main script: Player won!")
+func _on_player_won(player_id: int):
+	print("Main script: Player ", player_id, " won!")
 
-func _on_player_died():
-	print("Main script: Player died!")
+func _on_player_died(player_id: int):
+	print("Main script: Player ", player_id, " died!")
 
-func _on_game_state_changed(new_state):
-	print("Main script: Game state changed to ", GameManager.State.keys()[new_state])
+func _on_game_state_changed(player_id: int, new_state):
+	print("Main script: Player ", player_id, " state changed to ", GameManager.State.keys()[new_state])
 
 # Goal detection
 func _on_goal_body_entered(body: Node3D) -> void:
