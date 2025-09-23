@@ -8,6 +8,8 @@ var platform_states = {}
 # Dictionary to track timers for brittle platforms
 var brittle_timers = {}
 
+const BREAK_TIME: float = 1.0
+
 var game_node: Node3D
 var player: CharacterBody3D
 
@@ -147,7 +149,7 @@ func start_brittle_timer(platform: CSGBox3D):
 	
 	# Create and start timer
 	var timer = Timer.new()
-	timer.wait_time = 2.0
+	timer.wait_time = BREAK_TIME
 	timer.one_shot = true
 	timer.timeout.connect(_on_brittle_timer_timeout.bind(platform))
 	game_node.add_child(timer)

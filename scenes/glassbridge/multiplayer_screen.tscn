@@ -76,7 +76,6 @@ script = ExtResource("1_by53l")
 
 [node name="Panel" type="Panel" parent="."]
 modulate = Color(0.30588236, 0.30588236, 0.30588236, 1)
-self_modulate = Color(0.69, 0.9793333, 1, 1)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -164,5 +163,5 @@ vertical_alignment = 1
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_start_game_2_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_join_pressed"]
-[connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_back_pressed"]
 [connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_quit_pressed"]
+[connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_back_pressed"]
