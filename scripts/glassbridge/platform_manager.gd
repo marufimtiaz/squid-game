@@ -7,6 +7,8 @@ enum Glass { SOLID, BRITTLE, BROKEN }
 var platform_states = {}
 # Dictionary to track timers for brittle platforms
 var brittle_timers = {}
+# Step 8: Track which players are on each platform for sync
+var platform_affected_players = {}  # platform -> Array[int]
 
 const BREAK_TIME: float = 1.0
 
@@ -145,6 +147,12 @@ func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
 	print("Starting ", BREAK_TIME, "-second timer for brittle platform: ", platform.name, " triggered by player: ", triggering_player_id)
 	change_platform_color(platform, Color.YELLOW)  # Change to yellow when timer starts
 	
+	# Step 8: Track affected player for sync
+	var affected_players: Array[int] = []
+	if triggering_player_id > 0:
+		affected_players.append(triggering_player_id)
+	platform_affected_players[platform] = affected_players
+	
 	# Create and start timer
 	var timer = Timer.new()
 	timer.wait_time = BREAK_TIME
@@ -155,10 +163,21 @@ func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
 	
 	brittle_timers[platform] = timer
 	print("Timer created and started for platform: ", platform.name, " - wait time: ", timer.wait_time)
+	
+	# Step 8: Log sync data for this platform
+	var sync_data = create_platform_sync_data(platform)
+	if sync_data:
+		print("SYNC Platform: ", platform.name, " State=", PlatformManager.Glass.keys()[sync_data.state], " Timer=", "%.2f" % sync_data.timer_remaining, " AffectedPlayers=", sync_data.affected_players)
 
 func _on_brittle_timer_timeout(platform: CSGBox3D):
 	print("===== TIMER TIMEOUT =====")
 	print("Brittle platform timer expired, disabling: ", platform.name)
+	
+	# Step 8: Log final sync state before breaking
+	var sync_data = create_platform_sync_data(platform)
+	if sync_data:
+		print("SYNC Final Platform: ", platform.name, " State=", PlatformManager.Glass.keys()[sync_data.state], " AffectedPlayers=", sync_data.affected_players)
+	
 	disable_platform(platform)
 	
 	# Clean up timer
@@ -167,6 +186,7 @@ func _on_brittle_timer_timeout(platform: CSGBox3D):
 		print("Cleaning up timer for platform: ", platform.name)
 		timer.queue_free()
 		brittle_timers.erase(platform)
+		platform_affected_players.erase(platform)  # Clean up affected players too
 	print("==========================")
 
 func change_platform_color(platform: CSGBox3D, new_color: Color):
@@ -196,3 +216,75 @@ func cleanup():
 			timer.queue_free()
 	brittle_timers.clear()
 	platform_states.clear()
+	platform_affected_players.clear()
+
+# Step 8: Network Sync Methods
+func get_platform_id(platform: CSGBox3D) -> String:
+	"""Generate unique ID for platform based on its path"""
+	if platform:
+		return str(platform.get_path())
+	else:
+		return ""
+
+func create_platform_sync_data(platform: CSGBox3D) -> SyncData.PlatformSyncData:
+	"""Create sync data for a specific platform"""
+	if not platform:
+		return null
+	
+	var platform_id = get_platform_id(platform)
+	var state = get_platform_state(platform)
+	var timer_remaining = 0.0
+	var affected_players_raw = platform_affected_players.get(platform, [])
+	var affected_players: Array[int] = []
+	
+	# Convert to typed array
+	for player_id in affected_players_raw:
+		affected_players.append(player_id)
+	
+	# Get remaining timer time if timer is active
+	if platform in brittle_timers and brittle_timers[platform]:
+		timer_remaining = brittle_timers[platform].time_left
+	
+	return SyncData.PlatformSyncData.new(
+		platform_id,
+		state,
+		timer_remaining,
+		affected_players
+	)
+
+func apply_platform_sync_data(sync_data: SyncData.PlatformSyncData):
+	"""Apply sync data to a specific platform"""
+	if not sync_data:
+		return
+	
+	# Find platform by ID (for now we don't have a reverse lookup, this is preparatory)
+	# In a real multiplayer scenario, we'd maintain a platform registry
+	print("Would apply sync data for platform: ", sync_data.platform_id, " state: ", sync_data.state, " timer: ", sync_data.timer_remaining)
+	
+	# This is a preparatory method - in real multiplayer we would:
+	# 1. Find the platform by platform_id
+	# 2. Set its state to sync_data.state
+	# 3. If timer_remaining > 0, start/adjust timer to that remaining time
+	# 4. Update affected_players list
+
+func get_all_platforms_sync_data() -> Dictionary:
+	"""Get sync data for all platforms that have active state"""
+	var sync_data = {}
+	
+	# Include all platforms with non-default state or active timers
+	for platform in platform_states:
+		var state = platform_states[platform]
+		var has_timer = platform in brittle_timers and brittle_timers[platform] != null
+		
+		# Include platforms that are not solid (brittle/broken) or have active timers
+		if state != Glass.SOLID or has_timer:
+			var platform_id = get_platform_id(platform)
+			sync_data[platform_id] = create_platform_sync_data(platform)
+	
+	return sync_data
+
+func apply_all_platforms_sync_data(platforms_sync_data: Dictionary):
+	"""Apply sync data to all platforms"""
+	for platform_id in platforms_sync_data:
+		if platforms_sync_data[platform_id]:
+			apply_platform_sync_data(platforms_sync_data[platform_id])

@@ -66,6 +66,11 @@ func set_player_ui_state(player_id: int, state: UIState):
 	"""Set the UI state for a player"""
 	_player_ui_states[player_id] = state
 	print("Player ", player_id, " UI state changed to ", UIState.keys()[state])
+	
+	# Step 8: Log sync data when UI state changes
+	var sync_data = create_player_sync_data(player_id)
+	if sync_data:
+		print("SYNC Player: Player ", player_id, " Pos=", sync_data.position, " UIState=", UIState.keys()[sync_data.ui_state])
 
 func is_player_playing(player_id: int) -> bool:
 	"""Check if player is in PLAYING state (can receive game input)"""
@@ -121,3 +126,55 @@ func cleanup():
 	"""Clean up player references"""
 	_players.clear()
 	_primary_player = null
+
+# Step 8: Network Sync Methods
+func create_player_sync_data(player_id: int) -> SyncData.PlayerSyncData:
+	"""Create sync data for a specific player"""
+	var player = get_player_by_id(player_id)
+	if not player:
+		return null
+	
+	var animation_state = ""
+	if player.has_method("get_current_animation"):
+		animation_state = player.get_current_animation()
+	
+	return SyncData.PlayerSyncData.new(
+		player_id,
+		player.global_position,
+		player.rotation,
+		animation_state,
+		get_player_ui_state(player_id),
+		GameManager.State.PLAYING  # Will be overridden by GameManager
+	)
+
+func apply_player_sync_data(sync_data: SyncData.PlayerSyncData):
+	"""Apply sync data to a specific player"""
+	var player = get_player_by_id(sync_data.player_id)
+	if not player:
+		return
+	
+	# Only sync position/rotation if player is not local (for future multiplayer)
+	# For now, this prepares the structure
+	player.global_position = sync_data.position
+	player.rotation = sync_data.rotation
+	
+	# Apply animation state if player supports it
+	if sync_data.animation_state != "" and player.has_method("set_animation"):
+		player.set_animation(sync_data.animation_state)
+	
+	# Apply UI state
+	set_player_ui_state(sync_data.player_id, sync_data.ui_state)
+
+func get_all_players_sync_data() -> Dictionary:
+	"""Get sync data for all players"""
+	var sync_data = {}
+	for player in _players:
+		var player_id = get_player_id(player)
+		sync_data[player_id] = create_player_sync_data(player_id)
+	return sync_data
+
+func apply_all_players_sync_data(players_sync_data: Dictionary):
+	"""Apply sync data to all players"""
+	for player_id in players_sync_data:
+		if players_sync_data[player_id]:
+			apply_player_sync_data(players_sync_data[player_id])

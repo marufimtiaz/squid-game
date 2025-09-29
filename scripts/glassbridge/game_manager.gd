@@ -51,6 +51,12 @@ func set_player_state(player_id: int, new_state: State):
 		var old_state = current_state
 		player_states[player_id] = new_state
 		print("Player ", player_id, " state changed from ", State.keys()[old_state], " to ", State.keys()[new_state])
+		
+		# Step 8: Log essential sync data when game state changes
+		var essential_sync = get_essential_sync_data()
+		if not essential_sync.is_empty():
+			print("SYNC Game: Essential data size=", essential_sync.size(), " keys=", essential_sync.keys())
+		
 		state_changed.emit(player_id, new_state)
 		
 		match new_state:
@@ -182,3 +188,81 @@ func reset_game():
 		player_states[player_id] = State.PLAYING
 	if goal_timer:
 		goal_timer.stop()
+
+# Step 8: Network Sync Methods
+func create_game_sync_data() -> SyncData.GameSyncData:
+	"""Create complete game sync data"""
+	var sync_data = SyncData.GameSyncData.new()
+	
+	# Get platform sync data from platform manager
+	# Note: We don't have direct access to platform_manager here, so this would be called from main scene
+	# sync_data.platforms = platform_manager.get_all_platforms_sync_data()
+	
+	# Get player sync data from player manager and update with game state
+	sync_data.players = player_manager.get_all_players_sync_data()
+	for player_id in sync_data.players:
+		if sync_data.players[player_id]:
+			sync_data.players[player_id].game_state = get_player_state(player_id)
+	
+	# Set game completion status
+	sync_data.game_finished = is_game_finished()
+	if sync_data.game_finished:
+		sync_data.game_result = get_game_result()
+	
+	return sync_data
+
+func apply_game_sync_data(sync_data: SyncData.GameSyncData):
+	"""Apply complete game sync data"""
+	if not sync_data:
+		return
+	
+	# Apply player sync data
+	player_manager.apply_all_players_sync_data(sync_data.players)
+	
+	# Update game states from sync data
+	for player_id in sync_data.players:
+		if sync_data.players[player_id]:
+			var player_sync = sync_data.players[player_id]
+			set_player_state(player_id, player_sync.game_state)
+	
+	# Handle game completion if sync indicates it's finished
+	if sync_data.game_finished and not is_game_finished():
+		# Game finished on remote but not locally - handle appropriately
+		print("Game finished remotely with result: ", sync_data.game_result)
+
+func get_essential_sync_data() -> Dictionary:
+	"""Get minimal sync data for efficient networking"""
+	var essential_data = {}
+	
+	# Only include changed/important state
+	var changed_players = {}
+	for player_id in player_states:
+		var state = get_player_state(player_id)
+		if state != State.PLAYING:  # Only sync non-default states
+			changed_players[player_id] = {
+				"game_state": state,
+				"ui_state": player_manager.get_player_ui_state(player_id)
+			}
+	
+	if not changed_players.is_empty():
+		essential_data["players"] = changed_players
+	
+	if is_game_finished():
+		essential_data["game_finished"] = true
+		essential_data["game_result"] = get_game_result()
+	
+	return essential_data
+
+func apply_essential_sync_data(essential_data: Dictionary):
+	"""Apply minimal sync data efficiently"""
+	if essential_data.has("players"):
+		var players_data = essential_data["players"]
+		for player_id in players_data:
+			var player_data = players_data[player_id]
+			if player_data.has("game_state"):
+				set_player_state(player_id, player_data["game_state"])
+			if player_data.has("ui_state"):
+				player_manager.set_player_ui_state(player_id, player_data["ui_state"])
+	
+	if essential_data.get("game_finished", false):
+		print("Essential sync: Game finished with result: ", essential_data.get("game_result", ""))

@@ -51,6 +51,9 @@ func _ready() -> void:
 	# Auto-capture mouse when game starts (centralized input handling)
 	player_manager.capture_mouse()
 	
+	# Step 8: Setup periodic sync logging
+	setup_sync_logging()
+	
 	print("===== GAME SETUP COMPLETE =====")
 
 
@@ -142,5 +145,88 @@ func _unhandled_input(event: InputEvent):
 	# Release mouse with ALT key
 	if event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
 		player_manager.release_mouse()
+
+# Step 8: Network Sync Methods
+func capture_player_input(player_id: int) -> SyncData.InputSyncData:
+	"""Capture current input state for a specific player"""
+	var input_sync = SyncData.InputSyncData.new(player_id)
 	
+	# Capture movement input
+	input_sync.movement_vector = Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	
+	# Capture jump input
+	input_sync.jump_pressed = Input.is_action_just_pressed("ui_accept")  # Space
+	
+	# Capture menu toggle input
+	input_sync.menu_toggled = Input.is_action_just_pressed("ui_cancel")  # ESC
+	
+	# Mouse look delta would be captured in player script, not here
+	# This is preparatory - in real multiplayer, mouse input might be handled differently
+	
+	return input_sync
+
+func apply_player_input(input_sync: SyncData.InputSyncData):
+	"""Apply input sync data to a specific player"""
+	var target_player = player_manager.get_player_by_id(input_sync.player_id)
+	if not target_player:
+		return
+	
+	# This is preparatory - in real multiplayer we would apply the input state
+	# For now, just log what we would do
+	print("Would apply input to player ", input_sync.player_id, ": movement=", input_sync.movement_vector, " jump=", input_sync.jump_pressed)
+
+func create_complete_sync_snapshot() -> SyncData.GameSyncData:
+	"""Create a complete sync snapshot of current game state"""
+	var sync_data = game_manager.create_game_sync_data()
+	
+	# Add platform data from platform manager
+	sync_data.platforms = platform_manager.get_all_platforms_sync_data()
+	
+	return sync_data
+
+func apply_complete_sync_snapshot(sync_data: SyncData.GameSyncData):
+	"""Apply a complete sync snapshot to update game state"""
+	if not sync_data:
+		return
+	
+	# Apply platform sync data
+	platform_manager.apply_all_platforms_sync_data(sync_data.platforms)
+	
+	# Apply game sync data (includes player data)
+	game_manager.apply_game_sync_data(sync_data)
+
+func get_sync_state_summary() -> String:
+	"""Get a human-readable summary of current sync state (for debugging)"""
+	var summary = []
+	
+	# Player states
+	for game_player in player_manager.get_all_players():
+		var player_id = player_manager.get_player_id(game_player)
+		var game_state = game_manager.get_player_state(player_id)
+		var ui_state = player_manager.get_player_ui_state(player_id)
+		summary.append("Player %d: Game=%s UI=%s" % [player_id, GameManager.State.keys()[game_state], PlayerManager.UIState.keys()[ui_state]])
+	
+	# Platform states  
+	var platform_data = platform_manager.get_all_platforms_sync_data()
+	summary.append("Active platforms: %d" % platform_data.size())
+	
+	# Game completion
+	if game_manager.is_game_finished():
+		summary.append("Game finished: %s" % game_manager.get_game_result())
+	
+	return "Sync State: " + " | ".join(summary)
+
+# Step 8: Simple sync logging setup
+func setup_sync_logging():
+	"""Setup periodic sync state logging"""
+	var sync_timer = Timer.new()
+	sync_timer.wait_time = 10.0  # Log sync state every 10 seconds
+	sync_timer.timeout.connect(_on_sync_timer)
+	add_child(sync_timer)
+	sync_timer.start()
+	print("SYNC Logging enabled - summary every 10 seconds")
+
+func _on_sync_timer():
+	"""Log current sync state summary"""
+	var summary = get_sync_state_summary()
+	print("SYNC ", summary)
