@@ -14,6 +14,7 @@ extends Node3D
 var player_manager: PlayerManager
 var platform_manager: PlatformManager
 var game_manager: GameManager
+var spawn_manager: SpawnManager
 
 func _ready() -> void:
 	print("===== GAME SETUP STARTING =====")
@@ -28,6 +29,26 @@ func _ready() -> void:
 	
 	# Load and setup pause screen
 	setup_pause_screen()
+	
+	# Step 9: Initialize spawn manager
+	spawn_manager = SpawnManager.new(self)
+	spawn_manager.setup_default_spawn_points()
+	
+	# Set spawn manager reference in player manager
+	player_manager.set_spawn_manager(spawn_manager)
+	
+	# Move primary player to proper spawn point for consistency
+	if player:
+		var primary_player_id = player_manager.get_player_id(player)
+		var spawn_position = spawn_manager.assign_spawn_point(primary_player_id)
+		player.global_position = spawn_position
+		print("Primary player moved to spawn point: ", spawn_position)
+	
+	# Set player scene for spawning (load from current player)
+	var player_scene_path = "res://scenes/glassbridge/player_glass.tscn"  # Assuming this is the player scene
+	var player_scene_resource = load(player_scene_path) as PackedScene
+	if player_scene_resource:
+		player_manager.set_player_scene(player_scene_resource)
 	
 	# Initialize managers with player manager
 	platform_manager = PlatformManager.new(self, player_manager)
@@ -145,6 +166,16 @@ func _unhandled_input(event: InputEvent):
 	# Release mouse with ALT key
 	if event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
 		player_manager.release_mouse()
+	
+	# Step 9: Testing keys for dynamic player management
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_F3:
+				test_spawn_second_player()
+			KEY_F4:
+				test_remove_player()
+			KEY_F5:
+				test_multiple_spawns()
 
 # Step 8: Network Sync Methods
 func capture_player_input(player_id: int) -> SyncData.InputSyncData:
@@ -230,3 +261,109 @@ func _on_sync_timer():
 	"""Log current sync state summary"""
 	var summary = get_sync_state_summary()
 	print("SYNC ", summary)
+
+# Step 9: Dynamic Player Management Methods
+func spawn_new_player(custom_player_id: int = -1) -> CharacterBody3D:
+	"""Spawn a new player and add them to the game"""
+	# Spawn player first (no position set yet)
+	var new_player = player_manager.spawn_player(custom_player_id, Vector3.ZERO)
+	if not new_player:
+		print("ERROR: Failed to spawn new player")
+		return null
+	
+	# Add player to the scene FIRST
+	add_child(new_player)
+	
+	# Get the actual player ID and assign spawn point
+	var final_player_id = player_manager.get_player_id(new_player)
+	var spawn_position = Vector3(0, 2, 17)  # Default safe position
+	if spawn_manager:
+		spawn_position = spawn_manager.assign_spawn_point(final_player_id)
+	
+	# Now set position after it's in the scene tree
+	new_player.global_position = spawn_position
+	print("SPAWN: Player ", final_player_id, " positioned at: ", spawn_position)
+	print("SPAWN: Player ", final_player_id, " final world position: ", new_player.global_position)
+	
+	# Add player to game state
+	game_manager.handle_mid_game_join(final_player_id)
+	
+	# Game manager signals are already connected once, no need to reconnect
+	
+	print("New player ", final_player_id, " spawned and added to game")
+	return new_player
+
+func remove_existing_player(player_id: int) -> bool:
+	"""Remove a player from the game"""
+	print("REMOVE: Attempting to remove player ", player_id)
+	
+	var player_to_remove = player_manager.get_player_by_id(player_id)
+	if not player_to_remove:
+		print("REMOVE ERROR: Player ", player_id, " not found in player manager")
+		var all_players = player_manager.get_all_players()
+		var player_ids = []
+		for p in all_players:
+			player_ids.append(player_manager.get_player_id(p))
+		print("REMOVE: Available players: ", player_ids)
+		return false
+	
+	print("REMOVE: Found player ", player_id, " at position: ", player_to_remove.global_position)
+	
+	# Don't remove the primary player in single-player mode
+	if player_to_remove == player_manager.get_primary_player():
+		print("REMOVE ERROR: Cannot remove primary player")
+		return false
+	
+	print("REMOVE: Removing player ", player_id, " from game state...")
+	# Remove from game state first
+	game_manager.remove_player_from_game(player_id)
+	
+	print("REMOVE: Cleaning up platform data for player ", player_id, "...")
+	# Clean up platform data
+	platform_manager.cleanup_player_platform_data(player_id)
+	
+	print("REMOVE: Removing player ", player_id, " from scene...")
+	# Remove from scene
+	player_to_remove.queue_free()
+	
+	print("REMOVE: Removing player ", player_id, " from player manager...")
+	# Remove from player manager (this also cleans up spawn points)
+	player_manager.remove_player(player_to_remove)
+	
+	print("REMOVE SUCCESS: Player ", player_id, " completely removed from game")
+	return true
+
+# Step 9: Testing methods for dynamic player management
+func test_spawn_second_player():
+	"""Test method to spawn a second player"""
+	print("=== Testing: Spawning second player ===")
+	
+	# Check if player 2 already exists
+	var existing_player = player_manager.get_player_by_id(2)
+	if existing_player:
+		print("Player 2 already exists - not spawning duplicate")
+		return
+	
+	var new_player = spawn_new_player(2)
+	if new_player:
+		print("SUCCESS: Second player spawned at position: ", new_player.global_position)
+	else:
+		print("FAILED: Could not spawn second player")
+
+func test_remove_player():
+	"""Test method to remove the second player"""
+	print("=== Testing: Removing second player ===")
+	if remove_existing_player(2):
+		print("SUCCESS: Second player removed")
+	else:
+		print("FAILED: Could not remove second player")
+
+func test_multiple_spawns():
+	"""Test method to spawn multiple players"""
+	print("=== Testing: Multiple player spawns ===")
+	for i in range(3, 6):  # Spawn players 3, 4, 5
+		var new_player = spawn_new_player(i)
+		if new_player:
+			print("Player ", i, " spawned successfully")
+		else:
+			print("Failed to spawn player ", i)

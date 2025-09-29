@@ -11,6 +11,10 @@ var _next_player_id: int = 1
 # Step 7: Per-player UI state tracking (multiplayer-ready)
 var _player_ui_states: Dictionary = {}  # player_id -> UIState
 
+# Step 9: Dynamic player management
+var spawn_manager: SpawnManager
+var player_scene: PackedScene
+
 func _init(primary_player: CharacterBody3D):
 	self._primary_player = primary_player
 	if primary_player:
@@ -113,14 +117,80 @@ func get_player_id(player: CharacterBody3D) -> int:
 		return player.get("player_id")
 	return 0
 
+func get_next_player_id() -> int:
+	"""Get the next player ID that would be assigned"""
+	return _next_player_id
+
 func remove_player(player: CharacterBody3D) -> bool:
-	"""Remove a player (prepared for future multiplayer)"""
+	"""Remove a player (enhanced for dynamic multiplayer)"""
 	if has_player(player):
+		var player_id = get_player_id(player)
+		
+		# Clean up player resources
+		cleanup_player_resources(player_id)
+		
+		# Remove from players list
 		_players.erase(player)
-		# Don't remove primary player reference for now
+		
+		# Release spawn point
+		if spawn_manager:
+			spawn_manager.release_spawn_point(player_id)
+		
+		# Don't remove primary player reference for single-player compatibility
 		if player != _primary_player:
+			print("Player ", player_id, " removed successfully")
 			return true
+		else:
+			print("Cannot remove primary player in single-player mode")
 	return false
+
+# Step 9: Dynamic Player Management Methods
+func set_spawn_manager(manager: SpawnManager):
+	"""Set the spawn manager reference"""
+	spawn_manager = manager
+
+func set_player_scene(scene: PackedScene):
+	"""Set the player scene to use for spawning"""
+	player_scene = scene
+
+func spawn_player(custom_player_id: int = -1, _spawn_position: Vector3 = Vector3.ZERO) -> CharacterBody3D:
+	"""Spawn a new player at runtime"""
+	if not player_scene:
+		print("ERROR: No player scene set for spawning")
+		return null
+	
+	# Determine player ID
+	var new_player_id = custom_player_id if custom_player_id > 0 else _next_player_id
+	_next_player_id = max(_next_player_id, new_player_id + 1)
+	
+	# Instantiate new player
+	var new_player = player_scene.instantiate() as CharacterBody3D
+	if not new_player:
+		print("ERROR: Failed to instantiate player scene")
+		return null
+	
+	# Setup player properties
+	new_player.player_id = new_player_id
+	new_player.player_name = "Player " + str(new_player_id)
+	
+	# Set player manager reference if the player supports it
+	if new_player.has_method("set"):
+		new_player.player_manager = self
+	
+	# Add to players list and initialize UI state
+	_players.append(new_player)
+	_player_ui_states[new_player_id] = UIState.PLAYING
+	
+	print("Player ", new_player_id, " spawned (position will be set by scene)")
+	return new_player
+
+func cleanup_player_resources(player_id: int):
+	"""Clean up all resources associated with a player"""
+	# Remove UI state
+	_player_ui_states.erase(player_id)
+	
+	# Note: Other managers will handle their own cleanup through their update methods
+	print("Cleaned up resources for player ", player_id)
 
 func cleanup():
 	"""Clean up player references"""

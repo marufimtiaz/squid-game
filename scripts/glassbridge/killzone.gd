@@ -22,23 +22,38 @@ func _ready():
 func _on_body_entered(body: Node3D) -> void:
 	# Check if the body is a managed player using PlayerManager
 	if player_manager and player_manager.is_valid_player(body):
-		print("Player entered killzone - triggering fallimpact")
-		# Trigger fallimpact animation and freeze player
 		var entered_player = body as CharacterBody3D
-		entered_player.play_fallimpact()
-		# Release mouse centrally when player dies
-		player_manager.release_mouse()
+		var player_id = player_manager.get_player_id(entered_player)
+		var player_name = "Player " + str(player_id)
 		
-		# Notify game manager about player death
+		print("KILLZONE: Player ", player_id, " (", player_name, ") entered killzone at position: ", entered_player.global_position)
+		print("KILLZONE: Triggering fallimpact for player ", player_id)
+		
+		# Trigger fallimpact animation and freeze player
+		entered_player.play_fallimpact()
+		
+		# Only release mouse if Player 1 dies (single-player compatibility)
+		if player_id == 1:
+			player_manager.release_mouse()
+			print("KILLZONE: Player 1 died - mouse released")
+		
+		# Notify game manager about SPECIFIC player death
 		if game_manager:
+			print("KILLZONE: Notifying game manager about player ", player_id, " death")
+			# Set the dying player ID before calling handle_player_death
+			game_manager.current_dying_player = player_id
 			game_manager.handle_player_death()
 	elif body == player:
 		# Fallback to direct player comparison for compatibility
 		print("Player entered killzone - triggering fallimpact")
 		# Trigger fallimpact animation and freeze player
 		player.play_fallimpact()
-		# Release mouse centrally when player dies
-		player_manager.release_mouse()
+		
+		# Only release mouse if Player 1 dies (single-player compatibility) 
+		var player_id = player_manager.get_player_id(player)
+		if player_id == 1:
+			player_manager.release_mouse()
+			print("Player 1 died - mouse released")
 		
 		# Notify game manager about player death
 		if game_manager:

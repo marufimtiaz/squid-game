@@ -223,6 +223,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if get_tree().paused:
 		return
 	
+	# Step 9: Only Player 1 gets input (single-player compatibility)
+	if player_id != 1:
+		return
+	
 	# Step 7: Don't process input if player has menu open
 	if player_manager and not player_manager.is_player_playing(player_id):
 		return
@@ -241,6 +245,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	# Don't process physics if game is paused
 	if get_tree().paused:
+		return
+	
+	# Step 9: Only Player 1 gets input (single-player compatibility)
+	if player_id != 1:
+		# Other players still need physics (gravity, etc) but no input
+		if has_gravity and not is_on_floor():
+			velocity += get_gravity() * delta
+		move_and_slide()
 		return
 	
 	# Step 7: Don't process input if player has menu open

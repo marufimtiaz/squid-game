@@ -108,11 +108,31 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 		print("Set platform as solid: ", platform.name)
 
 func disable_platform(platform: CSGBox3D):
-	platform_states[platform] = Glass.BROKEN  # Set state to BROKEN
-	print("Deleting platform: ", platform.name, " - State set to BROKEN")
+	print("Deleting platform: ", platform.name, " - Setting state to BROKEN and cleaning up")
 	
-	# Simply delete the platform
+	# Set state to BROKEN first
+	platform_states[platform] = Glass.BROKEN  
+	
+	# Clean up timer if it exists
+	if platform in brittle_timers and brittle_timers[platform]:
+		brittle_timers[platform].queue_free()
+		brittle_timers.erase(platform)
+	
+	# Clean up affected players
+	if platform in platform_affected_players:
+		platform_affected_players.erase(platform)
+	
+	# Delete the platform
 	platform.queue_free()
+	
+	# Remove from state tracking after a short delay to allow one last sync
+	call_deferred("_cleanup_single_platform", platform)
+
+func _cleanup_single_platform(platform: CSGBox3D):
+	"""Clean up a single platform's references after it's been freed"""
+	if platform in platform_states:
+		platform_states.erase(platform)
+		print("PLATFORM_CLEANUP: Cleaned up references for freed platform")
 
 func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
 	print("Body entered brittle platform area! Body: ", body.name, " Platform: ", platform.name)
@@ -218,17 +238,42 @@ func cleanup():
 	platform_states.clear()
 	platform_affected_players.clear()
 
+# Step 9: Dynamic Player Management Methods
+func remove_player_from_platforms(player_id: int):
+	"""Remove a player from all platform affected_players lists"""
+	var platforms_to_update: Array[CSGBox3D] = []
+	
+	# Find all platforms that have this player in their affected_players list
+	for platform in platform_affected_players:
+		var affected_players: Array = platform_affected_players[platform]
+		if player_id in affected_players:
+			platforms_to_update.append(platform)
+	
+	# Remove the player from those platforms
+	for platform in platforms_to_update:
+		var affected_players: Array = platform_affected_players[platform]
+		affected_players.erase(player_id)
+		print("Removed player ", player_id, " from platform ", platform.name, " affected list")
+		
+		# If no more players are affected by this platform, we could optionally stop its timer
+		# For now, we'll leave the timer running for consistency
+
+func cleanup_player_platform_data(player_id: int):
+	"""Clean up all platform-related data for a removed player"""
+	remove_player_from_platforms(player_id)
+	print("Platform cleanup completed for player ", player_id)
+
 # Step 8: Network Sync Methods
 func get_platform_id(platform: CSGBox3D) -> String:
 	"""Generate unique ID for platform based on its path"""
-	if platform:
+	if platform and is_instance_valid(platform):
 		return str(platform.get_path())
 	else:
 		return ""
 
 func create_platform_sync_data(platform: CSGBox3D) -> SyncData.PlatformSyncData:
 	"""Create sync data for a specific platform"""
-	if not platform:
+	if not platform or not is_instance_valid(platform):
 		return null
 	
 	var platform_id = get_platform_id(platform)
@@ -271,8 +316,15 @@ func get_all_platforms_sync_data() -> Dictionary:
 	"""Get sync data for all platforms that have active state"""
 	var sync_data = {}
 	
+	# Clean up freed platforms first
+	cleanup_freed_platforms()
+	
 	# Include all platforms with non-default state or active timers
 	for platform in platform_states:
+		# Skip if platform is invalid/freed
+		if not is_instance_valid(platform):
+			continue
+			
 		var state = platform_states[platform]
 		var has_timer = platform in brittle_timers and brittle_timers[platform] != null
 		
@@ -282,6 +334,33 @@ func get_all_platforms_sync_data() -> Dictionary:
 			sync_data[platform_id] = create_platform_sync_data(platform)
 	
 	return sync_data
+
+func cleanup_freed_platforms():
+	"""Remove references to freed platforms from all tracking dictionaries"""
+	var platforms_to_remove = []
+	
+	# Find all freed platforms
+	for platform in platform_states:
+		if not is_instance_valid(platform):
+			platforms_to_remove.append(platform)
+	
+	# Remove them from all tracking dictionaries
+	for platform in platforms_to_remove:
+		print("PLATFORM_CLEANUP: Removing freed platform references for ", platform.name if platform else "unknown")
+		
+		# Remove from state tracking
+		if platform in platform_states:
+			platform_states.erase(platform)
+		
+		# Remove from timer tracking  
+		if platform in brittle_timers:
+			if brittle_timers[platform] and is_instance_valid(brittle_timers[platform]):
+				brittle_timers[platform].queue_free()
+			brittle_timers.erase(platform)
+		
+		# Remove from affected players tracking
+		if platform in platform_affected_players:
+			platform_affected_players.erase(platform)
 
 func apply_all_platforms_sync_data(platforms_sync_data: Dictionary):
 	"""Apply sync data to all platforms"""

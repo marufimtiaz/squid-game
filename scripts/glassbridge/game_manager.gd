@@ -9,6 +9,9 @@ var player_manager: PlayerManager
 var goal_timer: Timer
 var game_node: Node3D
 
+# Track which player is dying (set by killzone)
+var current_dying_player: int = 0
+
 # Signals to communicate with main game (now include player_id)
 signal player_won(player_id: int)
 signal player_died(player_id: int)
@@ -76,16 +79,20 @@ func handle_goal_reached(body: Node3D):
 			set_player_state(player_id, State.WON)
 
 func handle_player_death():
-	# For now, handle primary player death (Step 6 will make this per-player)
-	var primary_player = player_manager.get_primary_player()
-	if primary_player:
-		var player_id = player_manager.get_player_id(primary_player)
-		var current_state = get_player_state(player_id)
-		if current_state == State.PLAYING:
-			print("Player ", player_id, " died!")
-			set_player_state(player_id, State.DEAD)
-		else:
-			print("Player ", player_id, " death ignored - already in state: ", State.keys()[current_state])
+	# Handle death for the specific player that entered the killzone
+	var player_id = current_dying_player if current_dying_player > 0 else 1
+	var current_state = get_player_state(player_id)
+	
+	print("GAME_MANAGER: Processing death for player ", player_id, " (current state: ", State.keys()[current_state], ")")
+	
+	if current_state == State.PLAYING:
+		print("GAME_MANAGER: Player ", player_id, " died!")
+		set_player_state(player_id, State.DEAD)
+	else:
+		print("GAME_MANAGER: Player ", player_id, " death ignored - already in state: ", State.keys()[current_state])
+	
+	# Reset the dying player tracker
+	current_dying_player = 0
 
 func _handle_player_won(player_id: int):
 	print("Handling player ", player_id, " win...")
@@ -188,6 +195,62 @@ func reset_game():
 		player_states[player_id] = State.PLAYING
 	if goal_timer:
 		goal_timer.stop()
+
+# Step 9: Dynamic Player Management Methods
+func add_player_to_game(player_id: int, initial_state: State = State.PLAYING):
+	"""Add a new player to the game state"""
+	if player_id in player_states:
+		print("Player ", player_id, " already exists in game state")
+		return
+	
+	player_states[player_id] = initial_state
+	print("Player ", player_id, " added to game with state: ", State.keys()[initial_state])
+	
+	# Connect player signals if it's a real player object
+	var player = player_manager.get_player_by_id(player_id)
+	if player and player.has_signal("player_victory_started") and player.has_signal("victory_finished"):
+		if not player.player_victory_started.is_connected(_on_player_victory_started):
+			player.player_victory_started.connect(_on_player_victory_started)
+		if not player.victory_finished.is_connected(_on_player_victory_finished):
+			player.victory_finished.connect(_on_player_victory_finished)
+		print("Connected signals for player ", player_id)
+
+func remove_player_from_game(player_id: int):
+	"""Remove a player from the game state"""
+	if player_id not in player_states:
+		print("Player ", player_id, " not found in game state")
+		return
+	
+	# Disconnect player signals if it's a real player object
+	var player = player_manager.get_player_by_id(player_id)
+	if player and player.has_signal("player_victory_started") and player.has_signal("victory_finished"):
+		if player.player_victory_started.is_connected(_on_player_victory_started):
+			player.player_victory_started.disconnect(_on_player_victory_started)
+		if player.victory_finished.is_connected(_on_player_victory_finished):
+			player.victory_finished.disconnect(_on_player_victory_finished)
+		print("Disconnected signals for player ", player_id)
+	
+	player_states.erase(player_id)
+	print("Player ", player_id, " removed from game state")
+
+func get_active_player_count() -> int:
+	"""Get count of players still actively playing (not dead or won)"""
+	var active_count = 0
+	for player_id in player_states:
+		if player_states[player_id] == State.PLAYING:
+			active_count += 1
+	return active_count
+
+func handle_mid_game_join(player_id: int):
+	"""Handle a player joining an already running game"""
+	if is_game_finished():
+		# Game already finished, add as spectator
+		add_player_to_game(player_id, State.DEAD)  # Use DEAD as spectator state
+		print("Player ", player_id, " joined finished game as spectator")
+	else:
+		# Game still running, add as playing
+		add_player_to_game(player_id, State.PLAYING)
+		print("Player ", player_id, " joined ongoing game")
 
 # Step 8: Network Sync Methods
 func create_game_sync_data() -> SyncData.GameSyncData:
