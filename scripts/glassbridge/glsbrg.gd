@@ -22,6 +22,10 @@ func _ready() -> void:
 	# Initialize player manager first
 	player_manager = PlayerManager.new(player)
 	
+	# Step 7: Set PlayerManager reference in player for UI state checking
+	if player:
+		player.player_manager = player_manager
+	
 	# Load and setup pause screen
 	setup_pause_screen()
 	
@@ -76,34 +80,60 @@ func _exit_tree():
 		player_manager.cleanup()
 
 func setup_pause_screen():
-	"""Load and setup the pause screen"""
+	"""Load and setup the player menu screen (Step 7: no global pause)"""
 	var pause_scene = preload("res://scenes/glassbridge/pause_screen.tscn")
 	pause_screen = pause_scene.instantiate()
 	add_child(pause_screen)
 	
-	# Make sure pause screen processes during pause
-	pause_screen.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+	# Step 7: Menu overlay processes normally (game never pauses)
+	pause_screen.process_mode = Node.PROCESS_MODE_ALWAYS
 	
-	# Pass player manager reference to pause screen
+	# Pass references to menu screen
 	pause_screen.player_manager = player_manager
-	# Keep legacy player reference for compatibility
-	pause_screen.player = player
+	pause_screen.main_scene = self
 	
-	# Initially hide the pause screen
+	# Initially hide the menu screen
 	pause_screen.visible = false
 
+# Step 7: Per-player menu management
+func open_player_menu(player_id: int):
+	"""Open menu for a specific player (game continues running)"""
+	print("Opening menu for Player ", player_id)
+	player_manager.set_player_ui_state(player_id, PlayerManager.UIState.MENU_OPEN)
+	
+	# Show menu overlay (convert old pause screen to player menu)
+	pause_screen.visible = true
+	player_manager.release_mouse()
+
+func close_player_menu(player_id: int):
+	"""Close menu for a specific player"""
+	print("Closing menu for Player ", player_id)
+	player_manager.set_player_ui_state(player_id, PlayerManager.UIState.PLAYING)
+	
+	# Hide menu overlay
+	pause_screen.visible = false
+	player_manager.capture_mouse()
+
 func _unhandled_input(event: InputEvent):
-	"""Handle pause input and centralized mouse control"""
-	# Pause handling
+	"""Handle player menu input and centralized mouse control"""
+	# Step 7: Per-player menu handling (no global pause)
 	if event.is_action_pressed("ui_cancel"):  # ESC key
-		if get_tree().paused:
-			pause_screen.resume_game()
-		else:
-			pause_screen.show_pause()
+		var menu_player = player_manager.get_primary_player()
+		if menu_player:
+			var player_id = player_manager.get_player_id(menu_player)
+			var ui_state = player_manager.get_player_ui_state(player_id)
+			if ui_state == PlayerManager.UIState.MENU_OPEN:
+				close_player_menu(player_id)
+			else:
+				open_player_menu(player_id)
 	
 	# Centralized mouse handling (Step 5: moved from player script)
-	if get_tree().paused:
-		return
+	# Only process game input for players in PLAYING state
+	var input_player = player_manager.get_primary_player()
+	if input_player:
+		var player_id = player_manager.get_player_id(input_player)
+		if not player_manager.is_player_playing(player_id):
+			return  # Player has menu open, ignore game input
 		
 	# Capture mouse with left click
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):

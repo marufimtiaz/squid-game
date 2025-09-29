@@ -10,6 +10,9 @@ extends CharacterBody3D
 @export var player_id: int = 1
 @export var player_name: String = "Player 1"
 
+# Step 7: Reference to PlayerManager for UI state checking
+var player_manager: PlayerManager
+
 ## Can we move around?
 @export var can_move : bool = true
 ## Are we affected by gravity?
@@ -219,6 +222,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Don't process input if game is paused
 	if get_tree().paused:
 		return
+	
+	# Step 7: Don't process input if player has menu open
+	if player_manager and not player_manager.is_player_playing(player_id):
+		return
 		
 	# Look around (mouse capture is now handled by main scene)
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and event is InputEventMouseMotion:
@@ -234,6 +241,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	# Don't process physics if game is paused
 	if get_tree().paused:
+		return
+	
+	# Step 7: Don't process input if player has menu open
+	if player_manager and not player_manager.is_player_playing(player_id):
 		return
 		
 	# Track floor state for fall detection

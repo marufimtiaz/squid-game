@@ -1,42 +1,24 @@
 extends Control
 
-# Reference to player manager for mouse handling (set by main game script)
 var player_manager: PlayerManager
-# Keep legacy player reference for compatibility
-var player: CharacterBody3D
+var main_scene: Node3D
 
 func _ready():
-	# Make sure the pause screen is initially hidden
 	visible = false
 
 func _on_resume_pressed() -> void:
-	# Resume the game instead of reloading the scene
-	resume_game()
+	close_player_menu()
 
 func _on_main_menu_pressed() -> void:
-	# Unpause before changing scene
-	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/startmenu.tscn")
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
 
-func show_pause():
-	"""Show the pause screen and pause the game"""
-	visible = true
-	get_tree().paused = true
-	# Release mouse when pausing (centralized)
-	if player_manager:
-		player_manager.release_mouse()
-	elif player and player.has_method("release_mouse"):
-		player.release_mouse()
-
-func resume_game():
-	"""Hide the pause screen and resume the game"""
-	visible = false
-	get_tree().paused = false
-	# Re-capture mouse when resuming (centralized)
-	if player_manager:
-		player_manager.capture_mouse()
-	elif player and player.has_method("resume_from_pause"):
-		player.resume_from_pause()
+func close_player_menu():
+	"""Close the player menu through main scene for proper state management"""
+	if main_scene and player_manager:
+		var primary_player = player_manager.get_primary_player()
+		if primary_player:
+			var player_id = player_manager.get_player_id(primary_player)
+			main_scene.close_player_menu(player_id)

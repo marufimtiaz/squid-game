@@ -95,6 +95,8 @@ func _handle_player_won(player_id: int):
 
 func _handle_player_died(player_id: int):
 	print("Handling player ", player_id, " death...")
+	# Step 7: Set dead player to spectator UI state
+	player_manager.set_player_ui_state(player_id, PlayerManager.UIState.SPECTATING)
 	# Death is now handled by killzone waiting for fallimpact_finished
 	player_died.emit(player_id)
 

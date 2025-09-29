@@ -1,10 +1,15 @@
 class_name PlayerManager
 extends RefCounted
 
+enum UIState { PLAYING, MENU_OPEN, SPECTATING }
+
 # For now, we maintain single player compatibility while preparing for multiplayer
 var _primary_player: CharacterBody3D
 var _players: Array[CharacterBody3D] = []
 var _next_player_id: int = 1
+
+# Step 7: Per-player UI state tracking (multiplayer-ready)
+var _player_ui_states: Dictionary = {}  # player_id -> UIState
 
 func _init(primary_player: CharacterBody3D):
 	self._primary_player = primary_player
@@ -15,6 +20,8 @@ func _init(primary_player: CharacterBody3D):
 			primary_player.player_name = "Player " + str(_next_player_id)
 			_next_player_id += 1
 		_players.append(primary_player)
+		# Initialize player to PLAYING UI state
+		_player_ui_states[primary_player.player_id] = UIState.PLAYING
 
 # Primary interface for single-player compatibility
 func get_primary_player() -> CharacterBody3D:
@@ -50,9 +57,28 @@ func release_mouse():
 	"""Release mouse capture"""
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
-func release_mouse_all_players():
-	"""Legacy method - now just calls release_mouse()"""
-	release_mouse()
+# Step 7: Per-player UI state management
+func get_player_ui_state(player_id: int) -> UIState:
+	"""Get the current UI state for a player"""
+	return _player_ui_states.get(player_id, UIState.PLAYING)
+
+func set_player_ui_state(player_id: int, state: UIState):
+	"""Set the UI state for a player"""
+	_player_ui_states[player_id] = state
+	print("Player ", player_id, " UI state changed to ", UIState.keys()[state])
+
+func is_player_playing(player_id: int) -> bool:
+	"""Check if player is in PLAYING state (can receive game input)"""
+	return get_player_ui_state(player_id) == UIState.PLAYING
+
+func get_playing_players() -> Array[CharacterBody3D]:
+	"""Get all players currently in PLAYING state"""
+	var playing_players: Array[CharacterBody3D] = []
+	for player in _players:
+		var player_id = get_player_id(player)
+		if is_player_playing(player_id):
+			playing_players.append(player)
+	return playing_players
 
 # Future methods for multiplayer (currently just work with primary player)
 func add_player(player: CharacterBody3D) -> bool:
@@ -64,6 +90,8 @@ func add_player(player: CharacterBody3D) -> bool:
 			player.player_name = "Player " + str(_next_player_id)
 			_next_player_id += 1
 		_players.append(player)
+		# Initialize player to PLAYING UI state
+		_player_ui_states[player.player_id] = UIState.PLAYING
 		return true
 	return false
 
