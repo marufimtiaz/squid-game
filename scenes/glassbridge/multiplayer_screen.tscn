@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b8ba1866eamai"]
+[gd_scene load_steps=12 format=3 uid="uid://b8ba1866eamai"]
 
 [ext_resource type="Script" uid="uid://dtrfqd36grgtx" path="res://scripts/glassbridge/multiplayer_screen.gd" id="1_by53l"]
 [ext_resource type="Texture2D" uid="uid://cwyi282uyxbrq" path="res://menu.png" id="2_gkvsy"]
@@ -39,6 +39,10 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 corner_detail = 5
+
+[sub_resource type="LabelSettings" id="LabelSettings_by53l"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_gkvsy"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t0y3k"]
 bg_color = Color(0.65, 0.2925, 0.2925, 1)
@@ -114,6 +118,11 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
 theme_override_styles/hover = SubResource("StyleBoxFlat_poymh")
 text = "Host"
 
+[node name="HostIPLabel" type="Label" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+label_settings = SubResource("LabelSettings_by53l")
+
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
 modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(0, 12)
@@ -132,6 +141,10 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_u4tt2")
 theme_override_styles/hover = SubResource("StyleBoxFlat_poymh")
 text = "Join"
 
+[node name="StatusLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_gkvsy")
+
 [node name="Back" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -140,7 +153,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_t0y3k")
 theme_override_styles/hover = SubResource("StyleBoxFlat_cy0qo")
 text = "Back"
 
-[node name="StatusLabel" type="Label" parent="."]
+[node name="TitleLabel" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 0.965
@@ -155,13 +168,13 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_start_game_1_pressed"]
-[connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_resume_pressed"]
 [connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_single_player_pressed"]
+[connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_resume_pressed"]
 [connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_start_game_2_pressed"]
-[connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_start_game_2_pressed"]
-[connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_quit_pressed"]
 [connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_back_pressed"]
