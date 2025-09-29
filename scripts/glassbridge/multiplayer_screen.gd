@@ -12,6 +12,7 @@ const MAX_CLIENTS = 4
 @onready var back: Button = $VBoxContainer/Back
 
 var peer: ENetMultiplayerPeer
+var is_hosting: bool = false  # Track if we're actually hosting
 
 func _ready():
 	# Hide IP label initially
@@ -19,8 +20,8 @@ func _ready():
 	status_label.text = ""  # Empty by default
 
 func _input(event):
-	# Host can press SPACE to start the game when players are connected
-	if event.is_action_pressed("ui_accept") and multiplayer.is_server() and peer != null:
+	# Host can press SPACE to start the game when actually hosting
+	if event.is_action_pressed("ui_accept") and is_hosting:
 		var player_count = multiplayer.get_peers().size() + 1
 		if player_count >= 1:  # Allow host to start alone
 			start_multiplayer_game.rpc()  # Use RPC to call on all clients
@@ -73,6 +74,7 @@ func _on_host_pressed() -> void:
 	
 	# Set up multiplayer
 	multiplayer.multiplayer_peer = peer
+	is_hosting = true  # Mark that we're now hosting
 	
 	# Get and display local IP
 	var local_ip = get_local_ip()
@@ -115,7 +117,8 @@ func _on_join_pressed() -> void:
 
 
 func _on_back_pressed() -> void:
-	# Disconnect from multiplayer if connected
+	# Reset state and disconnect from multiplayer if connected
+	is_hosting = false
 	if multiplayer.multiplayer_peer:
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = null
