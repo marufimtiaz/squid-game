@@ -367,3 +367,48 @@ func apply_all_platforms_sync_data(platforms_sync_data: Dictionary):
 	for platform_id in platforms_sync_data:
 		if platforms_sync_data[platform_id]:
 			apply_platform_sync_data(platforms_sync_data[platform_id])
+
+func get_platform_configuration_data() -> Array:
+	"""Get platform configuration data for multiplayer syncing"""
+	var config_data = []
+	
+	# Collect all platform data with their glass types
+	for platform in platform_states.keys():
+		var glass_type = platform_states[platform]  # This is just the Glass enum value
+		var platform_info = {
+			"path": platform.get_path(),
+			"glass_type": glass_type,
+			"position": platform.global_position,
+			"is_broken": (glass_type == Glass.BROKEN)
+		}
+		config_data.append(platform_info)
+	
+	print("HOST: Collected configuration for ", config_data.size(), " platforms")
+	return config_data
+
+func apply_platform_configuration(config_data: Array, layer3: Node, layer4: Node):
+	"""Apply platform configuration received from host"""
+	print("CLIENT: Applying platform configuration for ", config_data.size(), " platforms")
+	
+	# Get all platforms in both layers
+	var all_platforms = []
+	all_platforms.append_array(layer3.get_children().filter(func(child): return child is CSGBox3D))
+	all_platforms.append_array(layer4.get_children().filter(func(child): return child is CSGBox3D))
+	
+	# Create a lookup by path for fast matching
+	var platform_by_path = {}
+	for platform in all_platforms:
+		platform_by_path[platform.get_path()] = platform
+	
+	# Apply configuration to matching platforms
+	for config in config_data:
+		var platform_path = config["path"]
+		if platform_path in platform_by_path:
+			var platform = platform_by_path[platform_path]
+			var glass_type = config["glass_type"]
+			setup_platform(platform, glass_type)
+			print("CLIENT: Configured platform ", platform.name, " as ", Glass.keys()[glass_type])
+		else:
+			print("CLIENT: Warning - platform path not found: ", platform_path)
+	
+	print("CLIENT: Platform configuration applied successfully")

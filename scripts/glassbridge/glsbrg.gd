@@ -59,8 +59,12 @@ func _ready() -> void:
 	game_manager.player_died.connect(_on_player_died)
 	game_manager.state_changed.connect(_on_game_state_changed)
 	
-	# Setup platforms using the platform manager
-	platform_manager.setup_platforms(layer3, layer4)
+	# MULTIPLAYER FIX: Only host generates platforms, clients receive config when they join
+	if multiplayer.is_server():
+		print("HOST: Generating platforms (will sync to clients as they join)...")
+		platform_manager.setup_platforms(layer3, layer4)
+	else:
+		print("CLIENT: Waiting for host platform configuration...")
 	
 	# Setup killzone reference to game manager
 	#var killzone = $KillZone
@@ -279,6 +283,11 @@ func _on_player_joined(peer_id: int):
 	if not multiplayer.is_server():
 		print("SPAWN: Not host, ignoring player join coordination")
 		return
+	
+	# HOST: Send platform configuration to the new client
+	print("HOST: Sending platform configuration to new client: ", peer_id)
+	var config_data = platform_manager.get_platform_configuration_data()
+	sync_platform_configuration_to_clients.rpc_id(peer_id, config_data)
 	
 	# HOST: Collect list of all existing players with their positions (except the new one)
 	var existing_players_data = []
@@ -1086,6 +1095,15 @@ func test_remove_player():
 		print("SUCCESS: Second player removed")
 	else:
 		print("FAILED: Could not remove second player")
+
+@rpc("authority", "call_local", "reliable")
+func sync_platform_configuration_to_clients(config_data: Array):
+	"""RPC: Host sends platform configuration to all clients"""
+	if not multiplayer.is_server():
+		print("CLIENT: Received platform configuration from host with ", config_data.size(), " platforms")
+		platform_manager.apply_platform_configuration(config_data, layer3, layer4)
+	else:
+		print("HOST: Synced platform configuration to all clients")
 
 func test_multiple_spawns():
 	"""Test method to spawn multiple players"""
