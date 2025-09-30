@@ -84,30 +84,34 @@ func setup_multiplayer_spawning():
 	print("SPAWN: Current peers: ", multiplayer.get_peers())
 	print("SPAWN: Local ID: ", multiplayer.get_unique_id())
 	
-	# Connect to multiplayer signals for new players joining/leaving
+	# Restore peer_connected signal for manual remote player spawning
+	if multiplayer.peer_connected.is_connected(_on_player_joined):
+		multiplayer.peer_connected.disconnect(_on_player_joined)
+	if multiplayer.peer_disconnected.is_connected(_on_player_left):
+		multiplayer.peer_disconnected.disconnect(_on_player_left)
+	
 	multiplayer.peer_connected.connect(_on_player_joined)
 	multiplayer.peer_disconnected.connect(_on_player_left)
 	
-	# Connect to MultiplayerSpawner to handle spawned players
+	# DISABLE MultiplayerSpawner to avoid conflicts with manual spawning
 	if multiplayer_spawner:
-		multiplayer_spawner.spawned.connect(_on_player_spawned)
-		print("SPAWN: MultiplayerSpawner connected")
+		print("SPAWN: Completely disabling MultiplayerSpawner to use pure manual spawning")
+		# Disable automatic spawning by removing spawnable scenes
+		multiplayer_spawner._spawnable_scenes = PackedStringArray()
+		multiplayer_spawner.spawn_limit = 0
+		print("SPAWN: MultiplayerSpawner disabled - no automatic spawning")
 		
 		# Verify MultiplayerSpawner configuration
 		print("SPAWN: spawn_limit: ", multiplayer_spawner.spawn_limit)
 		print("SPAWN: spawn_path: ", multiplayer_spawner.spawn_path)
 		
-		# Manually spawn players since auto_spawn is not available in Godot 4.5
-		# Check if we're in actual multiplayer or single player mode
-		var peer_count = multiplayer.get_peers().size()
-		var is_actual_multiplayer = multiplayer.has_multiplayer_peer() and peer_count > 0
-		
-		if not is_actual_multiplayer:
-			print("SPAWN: Single player mode detected, manually spawning player...")
-			call_deferred("spawn_single_player_fallback")
-		else:
+		# Revert to manual spawning - it was working better
+		if multiplayer.has_multiplayer_peer():
 			print("SPAWN: Multiplayer mode detected, manually spawning local player...")
 			call_deferred("spawn_local_player_manual")
+		else:
+			print("SPAWN: Single player mode detected, manually spawning player...")
+			call_deferred("spawn_single_player_fallback")
 	else:
 		print("SPAWN ERROR: MultiplayerSpawner not found!")
 	
@@ -115,8 +119,10 @@ func setup_multiplayer_spawning():
 
 
 
+# REMOVED: spawn_all_connected_players - reverting to manual spawning approach
+
 func spawn_local_player_manual():
-	"""Manually spawn only the local player - keep the working approach"""
+	"""Manually spawn only the local player - revert to working approach"""
 	print("SPAWN: Spawning local player manually...")
 	
 	var local_peer_id = multiplayer.get_unique_id()
@@ -152,13 +158,201 @@ func spawn_local_player_manual():
 	
 	print("SPAWN: Player added to scene - Name: ", new_player.name, " Path: ", new_player.get_path())
 	
-	# Manually call the spawn handler
-	_on_player_spawned(new_player)
+	# Configure the player manually (no MultiplayerSpawner)
+	configure_spawned_player(new_player)
 
 func _on_player_joined(peer_id: int):
-	"""Handle when a new player joins during gameplay"""
+	"""Handle when a new player joins during gameplay - HOST MANAGES ALL SPAWNING"""
 	print("Player ", peer_id, " joined the game")
-	# Player will be automatically spawned by MultiplayerSpawner
+	print("SPAWN: Current multiplayer ID: ", multiplayer.get_unique_id())
+	print("SPAWN: Am I host?: ", multiplayer.is_server())
+	print("SPAWN: Current scene children: ", get_children().map(func(child): return child.name))
+	
+	# ONLY the host manages all spawning coordination
+	if not multiplayer.is_server():
+		print("SPAWN: Not host, ignoring player join coordination")
+		return
+	
+	# HOST: Collect list of all existing players (except the new one)
+	var existing_players = []
+	for child in get_children():
+		if child.name.begins_with("Player_"):
+			var existing_peer_id = child.name.get_slice("_", 1).to_int()
+			if existing_peer_id != peer_id:
+				existing_players.append(existing_peer_id)
+	
+	# HOST: Tell the new client about all existing players
+	if existing_players.size() > 0:
+		print("SPAWN: Telling new player ", peer_id, " about existing players: ", existing_players)
+		rpc_sync_existing_players.rpc_id(peer_id, existing_players)
+	
+	# HOST: Tell all existing clients about the new player
+	print("SPAWN: Telling all clients about new player: ", peer_id)
+	rpc_spawn_player_for_clients.rpc(peer_id)
+
+func configure_spawned_player(new_player: CharacterBody3D):
+	"""Configure a manually spawned player (position, camera, etc.)"""
+	var peer_id = new_player.get_multiplayer_authority()
+	print("SPAWN: Configuring spawned player for peer: ", peer_id)
+	
+	# Configure the spawned player
+	new_player.player_id = peer_id
+	new_player.player_name = "Player " + str(peer_id)
+	
+	# Get spawn position - use deterministic assignment based on peer order
+	var spawn_position = Vector3(0, 2, 20)  # Default position
+	if spawn_manager:
+		# Get sorted list of all connected peers (including host and self)
+		var all_peers = multiplayer.get_peers()
+		# Always add host (peer 1) to the list if not already there
+		if not all_peers.has(1):
+			all_peers.append(1)
+		# Always add self to the list if not already there
+		var my_id = multiplayer.get_unique_id()
+		if not all_peers.has(my_id):
+			all_peers.append(my_id)
+		all_peers.sort()
+		
+		print("SPAWN: DEBUG - All peers: ", all_peers, " Target peer: ", peer_id)
+		
+		# Find this peer's index in the sorted list
+		var peer_index = all_peers.find(peer_id)
+		print("SPAWN: DEBUG - Peer index: ", peer_index, " Spawn point count: ", spawn_manager.get_spawn_point_count())
+		
+		if peer_index >= 0 and peer_index < spawn_manager.get_spawn_point_count():
+			# Assign spawn point based on connection order
+			spawn_position = spawn_manager.spawn_points[peer_index]
+			print("SPAWN: Deterministic spawn - Peer ", peer_id, " gets index ", peer_index, " at ", spawn_position)
+		else:
+			# Fallback to old method
+			spawn_position = spawn_manager.assign_spawn_point(peer_id)
+	
+	# Position the player
+	new_player.global_position = spawn_position
+	
+	# Camera management: Only enable camera for local player
+	var is_local_player = peer_id == multiplayer.get_unique_id()
+	var camera = new_player.get_node_or_null("Head/Camera3D")
+	if camera:
+		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_player, " MyID: ", multiplayer.get_unique_id())
+		
+		if is_local_player:
+			# For local player: disable ALL other cameras first, then enable this one
+			print("SPAWN: Setting up LOCAL player camera for peer: ", peer_id)
+			
+			# Find and disable all existing Camera3D nodes in the scene
+			var all_cameras_in_scene = []
+			_find_all_cameras(get_tree().current_scene, all_cameras_in_scene)
+			
+			for other_camera in all_cameras_in_scene:
+				if other_camera != camera and other_camera.current:
+					other_camera.current = false
+					print("SPAWN: Disabled existing camera: ", other_camera.get_path())
+			
+			# Now set this camera as current
+			camera.current = true
+			print("SPAWN: LOCAL camera set as current: ", camera.current)
+		else:
+			# For remote players: make sure camera is disabled
+			camera.current = false
+			print("SPAWN: REMOTE player camera disabled for peer: ", peer_id)
+		
+		print("SPAWN: Final camera state - Peer: ", peer_id, " Current: ", camera.current, " Path: ", camera.get_path())
+	
+	# Add to PlayerManager
+	var added_to_manager = player_manager.add_player(new_player)
+	print("SPAWN: Added to PlayerManager: ", added_to_manager)
+	print("SPAWN: PlayerManager now has ", player_manager.get_player_count(), " players")
+	
+	if is_local_player:
+		# Set as primary player if local (direct access since no setter exists)
+		player_manager._primary_player = new_player
+		print("SPAWN: Set as primary player (local)")
+	
+	print("SPAWN: Primary player is now: ", player_manager.get_primary_player())
+	
+	# Set player manager reference in player
+	new_player.player_manager = player_manager
+	
+	# Add player to GameManager
+	game_manager.add_player_to_game(peer_id)
+	print("SPAWN: Added to GameManager for peer: ", peer_id)
+	
+	print("SPAWN: Player configured for peer ", peer_id, " at position: ", spawn_position)
+	print("SPAWN: Total players now: ", game_manager.get_active_player_count())
+
+func spawn_remote_player(peer_id: int):
+	"""Spawn a remote player for a peer that joined"""
+	print("SPAWN: Creating remote player for peer: ", peer_id)
+	
+	# Load the player scene
+	var player_scene = load("res://scenes/glassbridge/player_glass.tscn") as PackedScene
+	if not player_scene:
+		print("SPAWN ERROR: Could not load player scene for remote player!")
+		return
+	
+	# Instantiate remote player
+	var remote_player = player_scene.instantiate() as CharacterBody3D
+	if not remote_player:
+		print("SPAWN ERROR: Failed to instantiate remote player for peer: ", peer_id)
+		return
+	
+	# Set multiplayer authority to the remote peer
+	remote_player.set_multiplayer_authority(peer_id)
+	
+	# Also set authority for MultiplayerSynchronizer
+	var synchronizer = remote_player.get_node_or_null("MultiplayerSynchronizer")
+	if synchronizer:
+		synchronizer.set_multiplayer_authority(peer_id)
+		print("SPAWN: Remote MultiplayerSynchronizer setup - Authority: ", peer_id)
+	else:
+		print("SPAWN ERROR: MultiplayerSynchronizer not found in remote player!")
+	
+	# Add to scene tree with unique name
+	var unique_name = "Player_" + str(peer_id)
+	remote_player.name = unique_name
+	add_child(remote_player, true)
+	
+	print("SPAWN: Remote player added - Name: ", remote_player.name, " Path: ", remote_player.get_path())
+	
+	# Configure the remote player manually (no MultiplayerSpawner)
+	configure_spawned_player(remote_player)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_sync_existing_players(existing_player_ids: Array):
+	"""RPC call from host to new client to spawn all existing players"""
+	print("RPC: Syncing existing players: ", existing_player_ids, " for client: ", multiplayer.get_unique_id())
+	
+	for peer_id in existing_player_ids:
+		# Skip if player already exists
+		var player_name = "Player_" + str(peer_id)
+		if has_node(player_name):
+			print("RPC: Player ", peer_id, " already exists, skipping")
+			continue
+		
+		# Spawn the remote player locally
+		print("RPC: Spawning existing player for peer: ", peer_id)
+		spawn_remote_player(peer_id)
+
+@rpc("any_peer", "call_local", "reliable")
+func rpc_spawn_player_for_clients(peer_id: int):
+	"""RPC call from host to all clients to spawn a remote player"""
+	print("RPC: Received spawn request for peer: ", peer_id, " on client: ", multiplayer.get_unique_id())
+	
+	# Skip if this is the local player (they spawn themselves)
+	if peer_id == multiplayer.get_unique_id():
+		print("RPC: Skipping spawn of own player: ", peer_id)
+		return
+	
+	# Skip if player already exists
+	var player_name = "Player_" + str(peer_id)
+	if has_node(player_name):
+		print("RPC: Player ", peer_id, " already exists, skipping")
+		return
+	
+	# Spawn the remote player locally
+	print("RPC: Spawning remote player for peer: ", peer_id)
+	spawn_remote_player(peer_id)
 
 func _on_player_spawned(node: Node):
 	"""Handle when MultiplayerSpawner spawns a new player"""

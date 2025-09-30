@@ -71,7 +71,7 @@ var victory_anim = "Remyanims/Victory"
 
 # Animation state tracking
 enum PlayerState { IDLE, WALKING, JUMPING, FALLING, IMPACT, VICTORY, WON_WAITING }
-var current_state: PlayerState = PlayerState.IDLE
+@export var current_state: PlayerState = PlayerState.IDLE
 var was_on_floor: bool = true
 var jump_time: float = 0.0
 var falling_time: float = 0.0
