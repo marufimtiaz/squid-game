@@ -78,54 +78,49 @@ func _ready() -> void:
 	print("===== GAME SETUP COMPLETE =====")
 
 func setup_multiplayer_spawning():
-	"""Setup MultiplayerSpawner and spawn players for each connected peer"""
+	"""Setup MultiplayerSpawner with automatic spawning"""
 	print("Setting up multiplayer spawning...")
 	print("SPAWN: Multiplayer mode: ", multiplayer.has_multiplayer_peer())
 	print("SPAWN: Current peers: ", multiplayer.get_peers())
 	print("SPAWN: Local ID: ", multiplayer.get_unique_id())
 	
-	# Connect to multiplayer signals
+	# Connect to multiplayer signals for new players joining/leaving
 	multiplayer.peer_connected.connect(_on_player_joined)
 	multiplayer.peer_disconnected.connect(_on_player_left)
 	
-	# Let MultiplayerSpawner handle the actual spawning automatically
-	# We'll configure spawned players via _on_player_spawned signal
+	# Connect to MultiplayerSpawner to handle spawned players
 	if multiplayer_spawner:
 		multiplayer_spawner.spawned.connect(_on_player_spawned)
 		print("SPAWN: MultiplayerSpawner connected")
+		
+		# Verify MultiplayerSpawner configuration
+		print("SPAWN: spawn_limit: ", multiplayer_spawner.spawn_limit)
+		print("SPAWN: spawn_path: ", multiplayer_spawner.spawn_path)
+		
+		# Manually spawn players since auto_spawn is not available in Godot 4.5
+		# Check if we're in actual multiplayer or single player mode
+		var peer_count = multiplayer.get_peers().size()
+		var is_actual_multiplayer = multiplayer.has_multiplayer_peer() and peer_count > 0
+		
+		if not is_actual_multiplayer:
+			print("SPAWN: Single player mode detected, manually spawning player...")
+			call_deferred("spawn_single_player_fallback")
+		else:
+			print("SPAWN: Multiplayer mode detected, manually spawning local player...")
+			call_deferred("spawn_local_player_manual")
 	else:
 		print("SPAWN ERROR: MultiplayerSpawner not found!")
 	
-	# Check if we're in actual multiplayer (multiple peers) or single player
-	var peer_count = multiplayer.get_peers().size()
-	var is_actual_multiplayer = multiplayer.has_multiplayer_peer() and peer_count > 0
-	
-	print("SPAWN: Peer count: ", peer_count)
-	print("SPAWN: Has multiplayer peer: ", multiplayer.has_multiplayer_peer())
-	print("SPAWN: Is actual multiplayer: ", is_actual_multiplayer)
-	print("SPAWN: My peer ID: ", multiplayer.get_unique_id())
-	print("SPAWN: All peers: ", multiplayer.get_peers())
-	
-	# Fallback: If single player (no other peers), manually spawn a player
-	if not is_actual_multiplayer:
-		print("SPAWN: Single player mode detected, manually spawning player...")
-		call_deferred("spawn_single_player_fallback")
-	else:
-		print("SPAWN: Multiplayer mode detected, manually spawning all connected players...")
-		# Manually spawn players for all connected peers (including self)
-		call_deferred("spawn_multiplayer_players")
+	print("SPAWN: MultiplayerSpawner should automatically spawn players for all connected peers")
 
 
 
-func spawn_multiplayer_players():
-	"""Manually spawn players for all connected peers in multiplayer mode"""
-	print("SPAWN: Manually spawning players for all peers...")
+func spawn_local_player_manual():
+	"""Manually spawn only the local player - keep the working approach"""
+	print("SPAWN: Spawning local player manually...")
 	
-	# Get all connected peers plus ourselves
-	var all_peers = multiplayer.get_peers()
-	all_peers.append(multiplayer.get_unique_id())  # Add local player
-	
-	print("SPAWN: Spawning for peers: ", all_peers)
+	var local_peer_id = multiplayer.get_unique_id()
+	print("SPAWN: Creating local player for peer: ", local_peer_id)
 	
 	# Load the player scene
 	var player_scene = load("res://scenes/glassbridge/player_glass.tscn") as PackedScene
@@ -133,33 +128,32 @@ func spawn_multiplayer_players():
 		print("SPAWN ERROR: Could not load player scene!")
 		return
 	
-	# Manually instantiate and setup players for each peer
-	for peer_id in all_peers:
-		print("SPAWN: Creating player for peer: ", peer_id)
-		
-		# Instantiate player
-		var new_player = player_scene.instantiate() as CharacterBody3D
-		if not new_player:
-			print("SPAWN ERROR: Failed to instantiate player for peer: ", peer_id)
-			continue
-		
-		# Set multiplayer authority
-		new_player.set_multiplayer_authority(peer_id)
-		
-		# Also set authority for MultiplayerSynchronizer
-		var synchronizer = new_player.get_node_or_null("MultiplayerSynchronizer")
-		if synchronizer:
-			synchronizer.set_multiplayer_authority(peer_id)
-			print("SPAWN: Set MultiplayerSynchronizer authority to peer: ", peer_id)
-		
-		# Add to scene tree
-		add_child(new_player, true)  # true = force_readable_name
-		
-		# This will trigger our _on_player_spawned callback
-		print("SPAWN: Player created for peer ", peer_id, " - calling setup...")
-		
-		# Manually call the spawn handler
-		_on_player_spawned(new_player)
+	# Instantiate player
+	var new_player = player_scene.instantiate() as CharacterBody3D
+	if not new_player:
+		print("SPAWN ERROR: Failed to instantiate player for peer: ", local_peer_id)
+		return
+	
+	# Set multiplayer authority
+	new_player.set_multiplayer_authority(local_peer_id)
+	
+	# Also set authority for MultiplayerSynchronizer
+	var synchronizer = new_player.get_node_or_null("MultiplayerSynchronizer")
+	if synchronizer:
+		synchronizer.set_multiplayer_authority(local_peer_id)
+		print("SPAWN: MultiplayerSynchronizer setup - Authority: ", local_peer_id, " Current: ", synchronizer.get_multiplayer_authority(), " Local: ", multiplayer.get_unique_id())
+	else:
+		print("SPAWN ERROR: MultiplayerSynchronizer not found in player!")
+	
+	# Add to scene tree with unique name to avoid conflicts
+	var unique_name = "Player_" + str(local_peer_id)
+	new_player.name = unique_name
+	add_child(new_player, true)  # true = force_readable_name
+	
+	print("SPAWN: Player added to scene - Name: ", new_player.name, " Path: ", new_player.get_path())
+	
+	# Manually call the spawn handler
+	_on_player_spawned(new_player)
 
 func _on_player_joined(peer_id: int):
 	"""Handle when a new player joins during gameplay"""
@@ -181,10 +175,24 @@ func _on_player_spawned(node: Node):
 	new_player.player_id = peer_id
 	new_player.player_name = "Player " + str(peer_id)
 	
-	# Get spawn position and set it
+	# Get spawn position - use deterministic assignment based on peer order
 	var spawn_position = Vector3(0, 2, 20)  # Default position
 	if spawn_manager:
-		spawn_position = spawn_manager.assign_spawn_point(peer_id)
+		# Get sorted list of all connected peers (including host)
+		var all_peers = multiplayer.get_peers()
+		if multiplayer.is_server():
+			all_peers.append(1)  # Add host
+		all_peers.sort()
+		
+		# Find this peer's index in the sorted list
+		var peer_index = all_peers.find(peer_id)
+		if peer_index >= 0 and peer_index < spawn_manager.get_spawn_point_count():
+			# Assign spawn point based on connection order
+			spawn_position = spawn_manager.spawn_points[peer_index]
+			print("SPAWN: Deterministic spawn - Peer ", peer_id, " gets index ", peer_index, " at ", spawn_position)
+		else:
+			# Fallback to old method
+			spawn_position = spawn_manager.assign_spawn_point(peer_id)
 	
 	# Position the player
 	new_player.global_position = spawn_position
@@ -607,3 +615,5 @@ func test_multiple_spawns():
 			print("Player ", i, " spawned successfully")
 		else:
 			print("Failed to spawn player ", i)
+
+# Spawn coordination using deterministic assignment

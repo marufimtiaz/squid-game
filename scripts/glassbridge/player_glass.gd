@@ -196,6 +196,16 @@ func _ready() -> void:
 	animation_player.play(idle_anim)
 	
 	# Mouse capture is now handled by main scene (Step 5)
+	
+	# Setup animation sync for remote players
+	if not is_multiplayer_authority():
+		# For remote players, monitor state changes and sync animations
+		# Use a timer to periodically check for state changes
+		var sync_timer = Timer.new()
+		sync_timer.wait_time = 0.1
+		sync_timer.timeout.connect(_sync_remote_animation)
+		sync_timer.autostart = true
+		add_child(sync_timer)
 
 func _on_animation_finished(animation_name: StringName):
 	"""Handle animation completion events"""
@@ -217,6 +227,32 @@ func _on_animation_finished(animation_name: StringName):
 		idle_anim:
 			# Don't auto-transition from idle - let _update_animation_state handle it
 			pass
+
+var last_synced_state: PlayerState = PlayerState.IDLE
+
+func _sync_remote_animation():
+	"""Sync animation for remote players based on synchronized current_state"""
+	if is_multiplayer_authority():
+		return  # Only remote players need to sync
+	
+	if current_state != last_synced_state:
+		log_player("Syncing animation for remote player - state: " + PlayerState.keys()[current_state])
+		last_synced_state = current_state
+		
+		# Play the appropriate animation based on synced state
+		match current_state:
+			PlayerState.IDLE:
+				animation_player.play(idle_anim)
+			PlayerState.WALKING:
+				animation_player.play(walk_anim)
+			PlayerState.JUMPING:
+				animation_player.play(jump_anim)
+			PlayerState.FALLING:
+				animation_player.play(fall_anim)
+			PlayerState.IMPACT:
+				animation_player.play(fallimpact_anim)
+			PlayerState.VICTORY, PlayerState.WON_WAITING:
+				animation_player.play(victory_anim)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Don't process input if game is paused
