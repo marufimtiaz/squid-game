@@ -36,7 +36,8 @@ func _on_body_entered(body: Node3D) -> void:
 			print("KILLZONE: Local player died - mouse released")
 		
 		# Notify game manager about SPECIFIC player death
-		if game_manager:
+		# AUTHORITY CHECK: Only host processes game state changes
+		if game_manager and multiplayer.is_server():
 			print("KILLZONE: Notifying game manager about player ", player_id, " death")
 			# Set the dying player ID before calling handle_player_death
 			game_manager.current_dying_player = player_id
@@ -49,6 +50,11 @@ func _on_player_hit_killzone(player_id: int):
 func _on_player_fallimpact_finished(player_id: int):
 	# This gets called when the fallimpact animation finishes
 	print("Player ", player_id, " fallimpact animation finished")
+	
+	# AUTHORITY CHECK: Only host processes game end logic
+	if not multiplayer.is_server():
+		return
+		
 	print("FALLIMPACT: About to send RPC for player ", player_id)
 	print("FALLIMPACT: I am server: ", multiplayer.is_server())
 	print("FALLIMPACT: My peer ID: ", multiplayer.get_unique_id())

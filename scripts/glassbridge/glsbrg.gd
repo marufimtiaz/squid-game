@@ -84,9 +84,6 @@ func _ready() -> void:
 func setup_multiplayer_spawning():
 	"""Setup MultiplayerSpawner with automatic spawning"""
 	print("Setting up multiplayer spawning...")
-	print("SPAWN: Multiplayer mode: ", multiplayer.has_multiplayer_peer())
-	print("SPAWN: Current peers: ", multiplayer.get_peers())
-	print("SPAWN: Local ID: ", multiplayer.get_unique_id())
 	
 	# Restore peer_connected signal for manual remote player spawning
 	if multiplayer.peer_connected.is_connected(_on_player_joined):
@@ -99,27 +96,15 @@ func setup_multiplayer_spawning():
 	
 	# DISABLE MultiplayerSpawner to avoid conflicts with manual spawning
 	if multiplayer_spawner:
-		print("SPAWN: Completely disabling MultiplayerSpawner to use pure manual spawning")
 		# Disable automatic spawning by removing spawnable scenes
 		multiplayer_spawner._spawnable_scenes = PackedStringArray()
 		multiplayer_spawner.spawn_limit = 0
-		print("SPAWN: MultiplayerSpawner disabled - no automatic spawning")
-		
-		# Verify MultiplayerSpawner configuration
-		print("SPAWN: spawn_limit: ", multiplayer_spawner.spawn_limit)
-		print("SPAWN: spawn_path: ", multiplayer_spawner.spawn_path)
 		
 		# Revert to manual spawning - it was working better
 		if multiplayer.has_multiplayer_peer():
-			print("SPAWN: Multiplayer mode detected, manually spawning local player...")
 			call_deferred("spawn_local_player_manual")
 		else:
-			print("SPAWN: Single player mode detected, manually spawning player...")
 			call_deferred("spawn_single_player_fallback")
-	else:
-		print("SPAWN ERROR: MultiplayerSpawner not found!")
-	
-	print("SPAWN: MultiplayerSpawner should automatically spawn players for all connected peers")
 
 
 
@@ -153,7 +138,7 @@ func spawn_local_player_as_host(peer_id: int):
 @rpc("any_peer", "call_local", "reliable")
 func rpc_request_spawn_from_host(peer_id: int):
 	"""RPC call from client to host requesting to be spawned"""
-	print("RPC: Client ", peer_id, " requesting spawn from host")
+
 	
 	# Only host should handle spawn requests
 	if not multiplayer.is_server():
@@ -172,7 +157,7 @@ func rpc_request_spawn_from_host(peer_id: int):
 @rpc("any_peer", "call_local", "reliable")
 func rpc_spawn_local_at_position(peer_id: int, spawn_position: Vector3):
 	"""RPC call from host to client telling them where to spawn themselves"""
-	print("RPC: Host telling me to spawn at: ", spawn_position, " for peer: ", peer_id)
+
 	
 	# Spawn locally at the position specified by host
 	spawn_player_at_position(peer_id, spawn_position, true)
@@ -194,21 +179,21 @@ func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: b
 		print("SPAWN ERROR: Failed to instantiate player for peer: ", peer_id)
 		return
 	
-	# Set multiplayer authority
+	# Add to scene tree FIRST to ensure proper initialization
+	var unique_name = "Player_" + str(peer_id)
+	new_player.name = unique_name
+	add_child(new_player, true)  # true = force_readable_name
+	
+	# Set multiplayer authority AFTER adding to scene tree
 	new_player.set_multiplayer_authority(peer_id)
 	
-	# Also set authority for MultiplayerSynchronizer
+	# Also set authority for MultiplayerSynchronizer AFTER scene tree addition
 	var synchronizer = new_player.get_node_or_null("MultiplayerSynchronizer")
 	if synchronizer:
 		synchronizer.set_multiplayer_authority(peer_id)
 		print("SPAWN: MultiplayerSynchronizer setup - Authority: ", peer_id, " Current: ", synchronizer.get_multiplayer_authority(), " Local: ", multiplayer.get_unique_id())
 	else:
 		print("SPAWN ERROR: MultiplayerSynchronizer not found in player!")
-	
-	# Add to scene tree with unique name to avoid conflicts
-	var unique_name = "Player_" + str(peer_id)
-	new_player.name = unique_name
-	add_child(new_player, true)  # true = force_readable_name
 	
 	print("SPAWN: Player added to scene - Name: ", new_player.name, " Path: ", new_player.get_path())
 	
@@ -223,46 +208,31 @@ func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: b
 	# Setup camera based on whether this is local or remote
 	var camera = new_player.get_node_or_null("Head/Camera3D")
 	if camera:
-		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local, " MyID: ", multiplayer.get_unique_id())
-		
 		if is_local:
 			# For local player: disable ALL other cameras first, then enable this one
-			print("SPAWN: Setting up LOCAL player camera for peer: ", peer_id)
-			
-			# Find and disable all existing Camera3D nodes in the scene
 			var all_cameras_in_scene = []
 			_find_all_cameras(get_tree().current_scene, all_cameras_in_scene)
 			
 			for other_camera in all_cameras_in_scene:
 				if other_camera != camera and other_camera.current:
 					other_camera.current = false
-					print("SPAWN: Disabled existing camera: ", other_camera.get_path())
 			
 			# Now set this camera as current
 			camera.current = true
-			print("SPAWN: LOCAL camera set as current: ", camera.current)
+			print("Local camera enabled for peer: ", peer_id)
 		else:
 			# For remote players: make sure camera is disabled
 			camera.current = false
-			print("SPAWN: REMOTE player camera disabled for peer: ", peer_id)
-		
-		print("SPAWN: Final camera state - Peer: ", peer_id, " Current: ", camera.current, " Path: ", camera.get_path())
 	
 	# Add to managers
 	if player_manager:
-		var added_to_manager = player_manager.add_player(new_player)
-		print("SPAWN: Added to PlayerManager: ", added_to_manager)
-		print("SPAWN: PlayerManager now has ", player_manager.get_player_count(), " players")
-		
+		player_manager.add_player(new_player)
 		if is_local:
 			# Set as primary player if local (direct access since no setter exists)
 			player_manager._primary_player = new_player
-			print("SPAWN: Set as primary player (local)")
-			print("SPAWN: Primary player is now: ", player_manager.get_primary_player())
 	
 	if game_manager:
 		game_manager.add_player_to_game(peer_id)
-		print("SPAWN: Added to GameManager for peer: ", peer_id)
 	
 	# Connect fallimpact signal to killzone for game completion check
 	if new_player.has_signal("fallimpact_finished"):
@@ -416,21 +386,21 @@ func spawn_remote_player(peer_id: int):
 		print("SPAWN ERROR: Failed to instantiate remote player for peer: ", peer_id)
 		return
 	
-	# Set multiplayer authority to the remote peer
+	# Add to scene tree FIRST before setting authority
+	var unique_name = "Player_" + str(peer_id)
+	remote_player.name = unique_name
+	add_child(remote_player, true)
+	
+	# Set multiplayer authority AFTER adding to scene tree
 	remote_player.set_multiplayer_authority(peer_id)
 	
-	# Also set authority for MultiplayerSynchronizer
+	# Also set authority for MultiplayerSynchronizer AFTER scene tree addition
 	var synchronizer = remote_player.get_node_or_null("MultiplayerSynchronizer")
 	if synchronizer:
 		synchronizer.set_multiplayer_authority(peer_id)
 		print("SPAWN: Remote MultiplayerSynchronizer setup - Authority: ", peer_id)
 	else:
 		print("SPAWN ERROR: MultiplayerSynchronizer not found in remote player!")
-	
-	# Add to scene tree with unique name
-	var unique_name = "Player_" + str(peer_id)
-	remote_player.name = unique_name
-	add_child(remote_player, true)
 	
 	print("SPAWN: Remote player added - Name: ", remote_player.name, " Path: ", remote_player.get_path())
 	
@@ -440,7 +410,7 @@ func spawn_remote_player(peer_id: int):
 @rpc("any_peer", "call_local", "reliable")
 func rpc_sync_existing_players(existing_players_data: Array):
 	"""RPC call from host to new client to spawn all existing players with positions"""
-	print("RPC: Syncing existing players: ", existing_players_data, " for client: ", multiplayer.get_unique_id())
+
 	
 	for player_data in existing_players_data:
 		var peer_id = player_data[0]
@@ -453,17 +423,17 @@ func rpc_sync_existing_players(existing_players_data: Array):
 			continue
 		
 		# Spawn the remote player locally at the specified position
-		print("RPC: Spawning existing player for peer: ", peer_id, " at: ", spawn_position)
+
 		spawn_remote_player_at_position(peer_id, spawn_position)
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_spawn_player_for_clients(peer_id: int, spawn_position: Vector3):
 	"""RPC call from host to all clients to spawn a remote player at specific position"""
-	print("RPC: Received spawn request for peer: ", peer_id, " at position: ", spawn_position, " on client: ", multiplayer.get_unique_id())
+
 	
 	# Skip if this is the local player (they spawn themselves)
 	if peer_id == multiplayer.get_unique_id():
-		print("RPC: Skipping spawn of own player: ", peer_id)
+
 		return
 	
 	# Skip if player already exists
@@ -473,7 +443,7 @@ func rpc_spawn_player_for_clients(peer_id: int, spawn_position: Vector3):
 		return
 	
 	# Spawn the remote player locally at the specified position
-	print("RPC: Spawning remote player for peer: ", peer_id, " at: ", spawn_position)
+
 	spawn_remote_player_at_position(peer_id, spawn_position)
 
 func calculate_deterministic_spawn_position(peer_id: int) -> Vector3:
@@ -521,21 +491,21 @@ func spawn_remote_player_at_position(peer_id: int, spawn_position: Vector3):
 		print("SPAWN ERROR: Failed to instantiate remote player for peer: ", peer_id)
 		return
 	
-	# Set multiplayer authority to the remote peer
+	# Add to scene tree FIRST before setting authority
+	var unique_name = "Player_" + str(peer_id)
+	remote_player.name = unique_name
+	add_child(remote_player, true)
+	
+	# Set multiplayer authority AFTER adding to scene tree
 	remote_player.set_multiplayer_authority(peer_id)
 	
-	# Also set authority for MultiplayerSynchronizer
+	# Also set authority for MultiplayerSynchronizer AFTER scene tree addition
 	var synchronizer = remote_player.get_node_or_null("MultiplayerSynchronizer")
 	if synchronizer:
 		synchronizer.set_multiplayer_authority(peer_id)
 		print("SPAWN: Remote MultiplayerSynchronizer setup - Authority: ", peer_id)
 	else:
 		print("SPAWN ERROR: MultiplayerSynchronizer not found in remote player!")
-	
-	# Add to scene tree with unique name
-	var unique_name = "Player_" + str(peer_id)
-	remote_player.name = unique_name
-	add_child(remote_player, true)
 	
 	print("SPAWN: Remote player added - Name: ", remote_player.name, " Path: ", remote_player.get_path())
 	
@@ -813,7 +783,9 @@ func _on_game_state_changed(player_id: int, new_state):
 
 # Goal detection
 func _on_goal_body_entered(body: Node3D) -> void:
-	game_manager.handle_goal_reached(body)
+	# AUTHORITY CHECK: Only host processes game state changes
+	if multiplayer.is_server():
+		game_manager.handle_goal_reached(body)
 
 func _on_timer_timeout() -> void:
 	# This is now handled by the GameManager
@@ -905,15 +877,7 @@ func _unhandled_input(event: InputEvent):
 	if event is InputEventKey and event.keycode == KEY_ALT and event.pressed:
 		player_manager.release_mouse()
 	
-	# Step 9: Testing keys for dynamic player management
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_F3:
-				test_spawn_second_player()
-			KEY_F4:
-				test_remove_player()
-			KEY_F5:
-				test_multiple_spawns()
+
 
 # Step 8: Network Sync Methods
 func capture_player_input(player_id: int) -> SyncData.InputSyncData:
@@ -1000,102 +964,6 @@ func _on_sync_timer():
 	var summary = get_sync_state_summary()
 	print("SYNC ", summary)
 
-# Step 9: Dynamic Player Management Methods
-func spawn_new_player(custom_player_id: int = -1) -> CharacterBody3D:
-	"""Spawn a new player and add them to the game"""
-	# Spawn player first (no position set yet)
-	var new_player = player_manager.spawn_player(custom_player_id, Vector3.ZERO)
-	if not new_player:
-		print("ERROR: Failed to spawn new player")
-		return null
-	
-	# Add player to the scene FIRST
-	add_child(new_player)
-	
-	# Get the actual player ID and assign spawn point
-	var final_player_id = player_manager.get_player_id(new_player)
-	var spawn_position = Vector3(0, 2, 17)  # Default safe position
-	if spawn_manager:
-		spawn_position = spawn_manager.assign_spawn_point(final_player_id)
-	
-	# Now set position after it's in the scene tree
-	new_player.global_position = spawn_position
-	print("SPAWN: Player ", final_player_id, " positioned at: ", spawn_position)
-	print("SPAWN: Player ", final_player_id, " final world position: ", new_player.global_position)
-	
-	# Add player to game state
-	game_manager.handle_mid_game_join(final_player_id)
-	
-	# Game manager signals are already connected once, no need to reconnect
-	
-	print("New player ", final_player_id, " spawned and added to game")
-	return new_player
-
-func remove_existing_player(player_id: int) -> bool:
-	"""Remove a player from the game"""
-	print("REMOVE: Attempting to remove player ", player_id)
-	
-	var player_to_remove = player_manager.get_player_by_id(player_id)
-	if not player_to_remove:
-		print("REMOVE ERROR: Player ", player_id, " not found in player manager")
-		var all_players = player_manager.get_all_players()
-		var player_ids = []
-		for p in all_players:
-			player_ids.append(player_manager.get_player_id(p))
-		print("REMOVE: Available players: ", player_ids)
-		return false
-	
-	print("REMOVE: Found player ", player_id, " at position: ", player_to_remove.global_position)
-	
-	# Don't remove the primary player in single-player mode
-	if player_to_remove == player_manager.get_primary_player():
-		print("REMOVE ERROR: Cannot remove primary player")
-		return false
-	
-	print("REMOVE: Removing player ", player_id, " from game state...")
-	# Remove from game state first
-	game_manager.remove_player_from_game(player_id)
-	
-	print("REMOVE: Cleaning up platform data for player ", player_id, "...")
-	# Clean up platform data
-	platform_manager.cleanup_player_platform_data(player_id)
-	
-	print("REMOVE: Removing player ", player_id, " from scene...")
-	# Remove from scene
-	player_to_remove.queue_free()
-	
-	print("REMOVE: Removing player ", player_id, " from player manager...")
-	# Remove from player manager (this also cleans up spawn points)
-	player_manager.remove_player(player_to_remove)
-	
-	print("REMOVE SUCCESS: Player ", player_id, " completely removed from game")
-	return true
-
-# Step 9: Testing methods for dynamic player management
-func test_spawn_second_player():
-	"""Test method to spawn a second player"""
-	print("=== Testing: Spawning second player ===")
-	
-	# Check if player 2 already exists
-	var existing_player = player_manager.get_player_by_id(2)
-	if existing_player:
-		print("Player 2 already exists - not spawning duplicate")
-		return
-	
-	var new_player = spawn_new_player(2)
-	if new_player:
-		print("SUCCESS: Second player spawned at position: ", new_player.global_position)
-	else:
-		print("FAILED: Could not spawn second player")
-
-func test_remove_player():
-	"""Test method to remove the second player"""
-	print("=== Testing: Removing second player ===")
-	if remove_existing_player(2):
-		print("SUCCESS: Second player removed")
-	else:
-		print("FAILED: Could not remove second player")
-
 @rpc("authority", "call_local", "reliable")
 func sync_platform_configuration_to_clients(config_data: Array):
 	"""RPC: Host sends platform configuration to all clients"""
@@ -1105,14 +973,12 @@ func sync_platform_configuration_to_clients(config_data: Array):
 	else:
 		print("HOST: Synced platform configuration to all clients")
 
-func test_multiple_spawns():
-	"""Test method to spawn multiple players"""
-	print("=== Testing: Multiple player spawns ===")
-	for i in range(3, 6):  # Spawn players 3, 4, 5
-		var new_player = spawn_new_player(i)
-		if new_player:
-			print("Player ", i, " spawned successfully")
-		else:
-			print("Failed to spawn player ", i)
-
-# Spawn coordination using deterministic assignment
+@rpc("authority", "call_local", "reliable")
+func sync_game_state_rpc(game_state_data: Dictionary):
+	"""RPC: Host sends game state updates to all clients"""
+	if not multiplayer.is_server():
+		print("CLIENT: Received game state update from host: ", game_state_data.keys())
+		if game_manager:
+			game_manager.apply_essential_sync_data(game_state_data)
+	else:
+		print("HOST: Synced game state to all clients: ", game_state_data.keys())

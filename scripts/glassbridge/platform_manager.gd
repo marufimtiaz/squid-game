@@ -20,8 +20,6 @@ func _init(init_game_node: Node3D, init_player_manager: PlayerManager):
 	self.player_manager = init_player_manager
 
 func setup_platforms(layer3: Node, layer4: Node):
-	print("===== PLATFORM SETUP STARTING =====")
-	
 	# Get the list of platforms under the layer and shuffle
 	var glass_platforms_l3 = layer3.get_children().filter(func(child): return child is CSGBox3D)
 	glass_platforms_l3.shuffle()
@@ -29,15 +27,9 @@ func setup_platforms(layer3: Node, layer4: Node):
 	var glass_platforms_l4 = layer4.get_children().filter(func(child): return child is CSGBox3D)
 	glass_platforms_l4.shuffle()
 	
-	print("Found ", len(glass_platforms_l3), " platforms in Layer3")
-	print("Found ", len(glass_platforms_l4), " platforms in Layer4")
-	
 	# Set half the platforms as brittle
 	var platforms_to_make_brittle_l3 = (len(glass_platforms_l3)/2.0) as int
 	var platforms_to_make_brittle_l4 = (len(glass_platforms_l4)/2.0) as int
-	
-	print("Making ", platforms_to_make_brittle_l3, " platforms brittle in Layer3")
-	print("Making ", platforms_to_make_brittle_l4, " platforms brittle in Layer4")
 	
 	# Set the first N platforms in each layer as brittle, rest as solid
 	for i in range(len(glass_platforms_l3)):
@@ -53,23 +45,6 @@ func setup_platforms(layer3: Node, layer4: Node):
 			setup_platform(platform, Glass.BRITTLE)
 		else:
 			setup_platform(platform, Glass.SOLID)
-	
-	print("===== PLATFORM SETUP COMPLETE =====")
-	
-	# Debug: Print all brittle platforms and their Area3D children
-	print("===== DEBUG: BRITTLE PLATFORM CHECK =====")
-	for platform in platform_states.keys():
-		if platform_states[platform] == Glass.BRITTLE:
-			print("Brittle platform: ", platform.name)
-			print("  Position: ", platform.global_position)
-			print("  Size: ", platform.size)
-			var areas = platform.get_children().filter(func(child): return child is Area3D)
-			print("  Area3D children: ", len(areas))
-			for area in areas:
-				print("    Area name: ", area.name, " Position: ", area.global_position)
-		elif platform_states[platform] == Glass.BROKEN:
-			print("Broken platform: ", platform.name)
-	print("==========================================")
 
 func setup_platform(platform: CSGBox3D, glass_type: Glass):
 	platform_states[platform] = glass_type
@@ -152,6 +127,10 @@ func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
 		print("Not a managed player - ignoring collision with: ", body.name)
 
 func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
+	# AUTHORITY CHECK: Only host processes platform timers
+	if not game_node.multiplayer.is_server():
+		return
+		
 	print("start_brittle_timer called for platform: ", platform.name, " by player: ", triggering_player_id)
 	
 	# Check platform state before starting timer
@@ -190,6 +169,10 @@ func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
 		print("SYNC Platform: ", platform.name, " State=", PlatformManager.Glass.keys()[sync_data.state], " Timer=", "%.2f" % sync_data.timer_remaining, " AffectedPlayers=", sync_data.affected_players)
 
 func _on_brittle_timer_timeout(platform: CSGBox3D):
+	# AUTHORITY CHECK: Only host processes platform timeout
+	if not game_node.multiplayer.is_server():
+		return
+		
 	print("===== TIMER TIMEOUT =====")
 	print("Brittle platform timer expired, disabling: ", platform.name)
 	

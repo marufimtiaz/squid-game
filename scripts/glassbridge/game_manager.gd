@@ -65,6 +65,10 @@ func set_player_state(player_id: int, new_state: State):
 		
 		state_changed.emit(player_id, new_state)
 		
+		# AUTHORITY: Host syncs game state to all clients
+		if game_node and game_node.multiplayer.is_server():
+			_sync_game_state_to_clients(essential_sync)
+		
 		match new_state:
 			State.WON:
 				_handle_player_won(player_id)
@@ -360,7 +364,13 @@ func get_essential_sync_data() -> Dictionary:
 	"""Get minimal sync data for efficient networking"""
 	var essential_data = {}
 	
-	# Only include changed/important state
+	# Include player states in new format for direct access
+	essential_data["player_states"] = player_states.duplicate()
+	
+	# Include game end state
+	essential_data["game_end_in_progress"] = game_end_in_progress
+	
+	# Only include changed/important state (legacy format)
 	var changed_players = {}
 	for player_id in player_states:
 		var state = get_player_state(player_id)
@@ -376,11 +386,15 @@ func get_essential_sync_data() -> Dictionary:
 	if is_game_finished():
 		essential_data["game_finished"] = true
 		essential_data["game_result"] = get_game_result()
+		essential_data["check_game_end"] = true  # Trigger game end check on clients
 	
 	return essential_data
 
 func apply_essential_sync_data(essential_data: Dictionary):
 	"""Apply minimal sync data efficiently"""
+	print("GameManager: Applying synced data: ", essential_data.keys())
+	
+	# Handle legacy format with "players" key
 	if essential_data.has("players"):
 		var players_data = essential_data["players"]
 		for player_id in players_data:
@@ -390,5 +404,33 @@ func apply_essential_sync_data(essential_data: Dictionary):
 			if player_data.has("ui_state"):
 				player_manager.set_player_ui_state(player_id, player_data["ui_state"])
 	
+	# Handle new format with direct "player_states" key
+	if essential_data.has("player_states"):
+		var new_states = essential_data["player_states"]
+		for player_id in new_states:
+			if player_id in player_states:
+				var old_state = player_states[player_id]
+				player_states[player_id] = new_states[player_id]
+				print("GameManager: Updated player ", player_id, " state from ", old_state, " to ", player_states[player_id])
+	
+	# Update game end state if present
+	if essential_data.has("game_end_in_progress"):
+		game_end_in_progress = essential_data["game_end_in_progress"]
+		print("GameManager: Updated game_end_in_progress to ", game_end_in_progress)
+	
 	if essential_data.get("game_finished", false):
 		print("Essential sync: Game finished with result: ", essential_data.get("game_result", ""))
+		
+	# Trigger game end check if requested
+	if essential_data.has("check_game_end") and essential_data["check_game_end"]:
+		print("GameManager: Processing game end check from sync")
+		call_deferred("check_and_handle_game_end")
+
+func _sync_game_state_to_clients(game_state_data: Dictionary):
+	"""Send game state from host to all clients via RPC through the main scene"""
+	if game_node and game_node.has_method("sync_game_state_rpc"):
+		game_node.sync_game_state_rpc.rpc(game_state_data)
+	else:
+		print("ERROR: Cannot sync game state - main scene missing RPC method")
+
+
