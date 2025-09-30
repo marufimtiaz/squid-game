@@ -80,7 +80,11 @@ func handle_goal_reached(body: Node3D):
 
 func handle_player_death():
 	# Handle death for the specific player that entered the killzone
-	var player_id = current_dying_player if current_dying_player > 0 else 1
+	if current_dying_player <= 0:
+		print("GAME_MANAGER: Error - no dying player set!")
+		return
+		
+	var player_id = current_dying_player
 	var current_state = get_player_state(player_id)
 	
 	print("GAME_MANAGER: Processing death for player ", player_id, " (current state: ", State.keys()[current_state], ")")

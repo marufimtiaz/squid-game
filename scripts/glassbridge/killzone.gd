@@ -29,10 +29,11 @@ func _on_body_entered(body: Node3D) -> void:
 		# Trigger fallimpact animation and freeze player
 		entered_player.play_fallimpact()
 		
-		# Only release mouse if Player 1 dies (single-player compatibility)
-		if player_id == 1:
+		# Release mouse if local player dies (multiplayer compatible)
+		var local_player_id = multiplayer.get_unique_id()
+		if player_id == local_player_id:
 			player_manager.release_mouse()
-			print("KILLZONE: Player 1 died - mouse released")
+			print("KILLZONE: Local player died - mouse released")
 		
 		# Notify game manager about SPECIFIC player death
 		if game_manager:
