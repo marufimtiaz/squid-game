@@ -111,9 +111,55 @@ func setup_multiplayer_spawning():
 		print("SPAWN: Single player mode detected, manually spawning player...")
 		call_deferred("spawn_single_player_fallback")
 	else:
-		print("SPAWN: Multiplayer mode detected, waiting for MultiplayerSpawner...")
+		print("SPAWN: Multiplayer mode detected, manually spawning all connected players...")
+		# Manually spawn players for all connected peers (including self)
+		call_deferred("spawn_multiplayer_players")
 
 
+
+func spawn_multiplayer_players():
+	"""Manually spawn players for all connected peers in multiplayer mode"""
+	print("SPAWN: Manually spawning players for all peers...")
+	
+	# Get all connected peers plus ourselves
+	var all_peers = multiplayer.get_peers()
+	all_peers.append(multiplayer.get_unique_id())  # Add local player
+	
+	print("SPAWN: Spawning for peers: ", all_peers)
+	
+	# Load the player scene
+	var player_scene = load("res://scenes/glassbridge/player_glass.tscn") as PackedScene
+	if not player_scene:
+		print("SPAWN ERROR: Could not load player scene!")
+		return
+	
+	# Manually instantiate and setup players for each peer
+	for peer_id in all_peers:
+		print("SPAWN: Creating player for peer: ", peer_id)
+		
+		# Instantiate player
+		var new_player = player_scene.instantiate() as CharacterBody3D
+		if not new_player:
+			print("SPAWN ERROR: Failed to instantiate player for peer: ", peer_id)
+			continue
+		
+		# Set multiplayer authority
+		new_player.set_multiplayer_authority(peer_id)
+		
+		# Also set authority for MultiplayerSynchronizer
+		var synchronizer = new_player.get_node_or_null("MultiplayerSynchronizer")
+		if synchronizer:
+			synchronizer.set_multiplayer_authority(peer_id)
+			print("SPAWN: Set MultiplayerSynchronizer authority to peer: ", peer_id)
+		
+		# Add to scene tree
+		add_child(new_player, true)  # true = force_readable_name
+		
+		# This will trigger our _on_player_spawned callback
+		print("SPAWN: Player created for peer ", peer_id, " - calling setup...")
+		
+		# Manually call the spawn handler
+		_on_player_spawned(new_player)
 
 func _on_player_joined(peer_id: int):
 	"""Handle when a new player joins during gameplay"""
@@ -144,9 +190,9 @@ func _on_player_spawned(node: Node):
 	new_player.global_position = spawn_position
 	
 	# Camera management: Only enable camera for local player
+	var is_local_player = peer_id == multiplayer.get_unique_id()
 	var camera = new_player.get_node_or_null("Head/Camera3D")
 	if camera:
-		var is_local_player = peer_id == multiplayer.get_unique_id()
 		camera.current = is_local_player
 		print("SPAWN: Camera found and set - Peer: ", peer_id, " Local: ", is_local_player, " Current: ", camera.current, " Position: ", new_player.global_position)
 	else:
@@ -156,6 +202,12 @@ func _on_player_spawned(node: Node):
 	var add_success = player_manager.add_player(new_player)
 	print("SPAWN: Added to PlayerManager: ", add_success)
 	print("SPAWN: PlayerManager now has ", player_manager.get_player_count(), " players")
+	
+	# Set as primary player if this is the local player
+	if is_local_player:
+		player_manager._primary_player = new_player
+		print("SPAWN: Set as primary player (local)")
+	
 	print("SPAWN: Primary player is now: ", player_manager.get_primary_player())
 	
 	# Set player manager reference in player
@@ -199,6 +251,10 @@ func spawn_single_player_fallback():
 	# Add to managers
 	player_manager.add_player(new_player)
 	new_player.player_manager = player_manager
+	
+	# Set as primary player for single-player mode
+	player_manager._primary_player = new_player
+	print("SPAWN: Set as primary player (single-player)")
 	
 	if game_manager:
 		game_manager.add_player_to_game(1)
