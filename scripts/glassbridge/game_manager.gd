@@ -12,6 +12,9 @@ var game_node: Node3D
 # Track which player is dying (set by killzone)
 var current_dying_player: int = 0
 
+# Prevent multiple simultaneous game end transitions
+var game_end_in_progress: bool = false
+
 # Signals to communicate with main game (now include player_id)
 signal player_won(player_id: int)
 signal player_died(player_id: int)
@@ -109,6 +112,10 @@ func _handle_player_won(player_id: int):
 	if goal_timer:
 		goal_timer.start()
 	player_won.emit(player_id)
+	
+	# FALLBACK: Also check if game should end when any player wins
+	# This ensures all instances transition properly even if victory_finished RPC fails
+	call_deferred("check_and_handle_game_end")
 
 func _handle_player_died(player_id: int):
 	print("Handling player ", player_id, " death...")
@@ -184,7 +191,13 @@ func check_and_handle_game_end():
 	else:
 		print("GAME_END: No multiplayer available")
 	
+	# Prevent multiple simultaneous game end transitions
+	if game_end_in_progress:
+		print("GAME_END: Game end already in progress, skipping...")
+		return
+	
 	if is_game_finished():
+		game_end_in_progress = true
 		print("All players finished - transitioning based on individual result...")
 		player_manager.freeze_all_players()
 		
