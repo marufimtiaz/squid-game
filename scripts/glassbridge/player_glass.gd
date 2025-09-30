@@ -223,8 +223,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if get_tree().paused:
 		return
 	
-	# Step 9: Only Player 1 gets input (single-player compatibility)
-	if player_id != 1:
+	# Step 9: Only local authority player gets input (multiplayer compatible)
+	if not is_multiplayer_authority():
 		return
 	
 	# Step 7: Don't process input if player has menu open
@@ -247,8 +247,8 @@ func _physics_process(delta: float) -> void:
 	if get_tree().paused:
 		return
 	
-	# Step 9: Only Player 1 gets input (single-player compatibility)
-	if player_id != 1:
+	# Step 9: Only local authority player gets input (multiplayer compatible)
+	if not is_multiplayer_authority():
 		# Other players still need physics (gravity, etc) but no input
 		if has_gravity and not is_on_floor():
 			velocity += get_gravity() * delta

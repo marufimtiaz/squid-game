@@ -193,10 +193,33 @@ func _on_player_spawned(node: Node):
 	var is_local_player = peer_id == multiplayer.get_unique_id()
 	var camera = new_player.get_node_or_null("Head/Camera3D")
 	if camera:
-		camera.current = is_local_player
-		print("SPAWN: Camera found and set - Peer: ", peer_id, " Local: ", is_local_player, " Current: ", camera.current, " Position: ", new_player.global_position)
+		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_player, " MyID: ", multiplayer.get_unique_id())
+		
+		if is_local_player:
+			# For local player: disable ALL other cameras first, then enable this one
+			print("SPAWN: Setting up LOCAL player camera for peer: ", peer_id)
+			
+			# Find and disable all existing Camera3D nodes in the scene
+			var all_cameras_in_scene = []
+			_find_all_cameras(get_tree().current_scene, all_cameras_in_scene)
+			
+			for other_camera in all_cameras_in_scene:
+				if other_camera != camera and other_camera.current:
+					other_camera.current = false
+					print("SPAWN: Disabled existing camera: ", other_camera.get_path())
+			
+			# Now set this camera as current
+			camera.current = true
+			print("SPAWN: LOCAL camera set as current: ", camera.current)
+		else:
+			# For remote player: never set as current
+			camera.current = false
+			print("SPAWN: REMOTE player camera disabled for peer: ", peer_id)
+		
+		print("SPAWN: Final camera state - Peer: ", peer_id, " Current: ", camera.current, " Path: ", camera.get_path())
 	else:
 		print("SPAWN ERROR: No camera found in player for peer: ", peer_id)
+
 	
 	# Add to player manager
 	var add_success = player_manager.add_player(new_player)
@@ -220,6 +243,14 @@ func _on_player_spawned(node: Node):
 	
 	print("SPAWN: Player configured for peer ", peer_id, " at position: ", spawn_position)
 	print("SPAWN: Total players now: ", player_manager.get_player_count())
+
+# Helper function to find all cameras in scene tree
+func _find_all_cameras(node: Node, camera_list: Array):
+	if node is Camera3D:
+		camera_list.append(node)
+	
+	for child in node.get_children():
+		_find_all_cameras(child, camera_list)
 
 func spawn_single_player_fallback():
 	"""Manually spawn a single player when not in multiplayer mode"""
