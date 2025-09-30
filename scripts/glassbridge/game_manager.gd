@@ -137,7 +137,14 @@ func is_playing() -> bool:
 # Step 6: Multi-player scene transition logic
 func is_game_finished() -> bool:
 	"""Check if all players have finished (won or died)"""
-	for player in player_manager.get_all_players():
+	var all_players = player_manager.get_all_players()
+	
+	# If no players exist yet, game is not finished (still starting up)
+	if all_players.is_empty():
+		return false
+		
+	# Check if all players have finished
+	for player in all_players:
 		var player_id = player_manager.get_player_id(player)
 		var state = get_player_state(player_id)
 		if state == State.PLAYING:

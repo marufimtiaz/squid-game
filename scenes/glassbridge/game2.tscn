@@ -1,9 +1,8 @@
-[gd_scene load_steps=10 format=3 uid="uid://debhruqvkbw1c"]
+[gd_scene load_steps=9 format=3 uid="uid://debhruqvkbw1c"]
 
 [ext_resource type="Script" uid="uid://d0pgl6k41vxjv" path="res://scripts/glassbridge/glsbrg.gd" id="1_h21dd"]
 [ext_resource type="PackedScene" uid="uid://bwcufv5r8ctl8" path="res://scenes/glassbridge/platforms.tscn" id="2_btr28"]
 [ext_resource type="PackedScene" uid="uid://cb7312hk6qiee" path="res://scenes/glassbridge/killzone.tscn" id="3_btr28"]
-[ext_resource type="PackedScene" uid="uid://b2w3t6p82gxcs" path="res://scenes/glassbridge/player_glass.tscn" id="4_h21dd"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -96,8 +95,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
 shape = SubResource("WorldBoundaryShape3D_h21dd")
 debug_color = Color(0.050708726, 0.5730574, 0.83116233, 0.878)
 
-[node name="Player" parent="." instance=ExtResource("4_h21dd")]
-transform = Transform3D(-0.18005551, 0, -0.98365647, 0, 1, 0, 0.98365647, 0, -0.18005551, 7.4142184, 0, 15.140034)
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("uid://b2w3t6p82gxcs")
+spawn_path = NodePath("..")
+spawn_limit = 4
 
 [connection signal="body_entered" from="Platforms/FinishPlatform/Goal" to="." method="_on_goal_body_entered"]
 [connection signal="timeout" from="Platforms/FinishPlatform/Goal/Timer" to="." method="_on_timer_timeout"]

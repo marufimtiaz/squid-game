@@ -1,11 +1,15 @@
 extends Node3D
 
-@onready var player: CharacterBody3D = $Player
+# Multiplayer setup - no hardcoded player reference
 @onready var platforms: Node3D = $Platforms
 @onready var goaltimer: Timer = $Platforms/FinishPlatform/Goal/Timer
 @onready var layer3: Node = $Platforms/Layer3
 @onready var layer4: Node = $Platforms/Layer4
 @onready var killzone: Area3D = $Killzone
+
+# Multiplayer spawning
+@onready var multiplayer_spawner: MultiplayerSpawner = $MultiplayerSpawner
+const PLAYER_SCENE = preload("res://scenes/glassbridge/player_glass.tscn")
 
 # Pause screen
 @onready var pause_screen: Control
@@ -17,15 +21,15 @@ var game_manager: GameManager
 var spawn_manager: SpawnManager
 
 func _ready() -> void:
-	print("===== GAME SETUP STARTING =====")
-	print("Player node: ", (player.name as String) if player else "NULL")
+	print("===== MULTIPLAYER GAME SETUP STARTING =====")
 	
-	# Initialize player manager first
-	player_manager = PlayerManager.new(player)
+	# Initialize player manager without hardcoded player
+	player_manager = PlayerManager.new(null)
+	print("SETUP: PlayerManager initialized")
 	
-	# Step 7: Set PlayerManager reference in player for UI state checking
-	if player:
-		player.player_manager = player_manager
+	# Setup multiplayer spawning first
+	print("SETUP: Calling setup_multiplayer_spawning...")
+	setup_multiplayer_spawning()
 	
 	# Load and setup pause screen
 	setup_pause_screen()
@@ -37,12 +41,8 @@ func _ready() -> void:
 	# Set spawn manager reference in player manager
 	player_manager.set_spawn_manager(spawn_manager)
 	
-	# Move primary player to proper spawn point for consistency
-	if player:
-		var primary_player_id = player_manager.get_player_id(player)
-		var spawn_position = spawn_manager.assign_spawn_point(primary_player_id)
-		player.global_position = spawn_position
-		print("Primary player moved to spawn point: ", spawn_position)
+	# Players will be spawned automatically via MultiplayerSpawner
+	# No need to move hardcoded player
 	
 	# Set player scene for spawning (load from current player)
 	var player_scene_path = "res://scenes/glassbridge/player_glass.tscn"  # Assuming this is the player scene
@@ -76,6 +76,147 @@ func _ready() -> void:
 	setup_sync_logging()
 	
 	print("===== GAME SETUP COMPLETE =====")
+
+func setup_multiplayer_spawning():
+	"""Setup MultiplayerSpawner and spawn players for each connected peer"""
+	print("Setting up multiplayer spawning...")
+	print("SPAWN: Multiplayer mode: ", multiplayer.has_multiplayer_peer())
+	print("SPAWN: Current peers: ", multiplayer.get_peers())
+	print("SPAWN: Local ID: ", multiplayer.get_unique_id())
+	
+	# Connect to multiplayer signals
+	multiplayer.peer_connected.connect(_on_player_joined)
+	multiplayer.peer_disconnected.connect(_on_player_left)
+	
+	# Let MultiplayerSpawner handle the actual spawning automatically
+	# We'll configure spawned players via _on_player_spawned signal
+	if multiplayer_spawner:
+		multiplayer_spawner.spawned.connect(_on_player_spawned)
+		print("SPAWN: MultiplayerSpawner connected")
+	else:
+		print("SPAWN ERROR: MultiplayerSpawner not found!")
+	
+	# Check if we're in actual multiplayer (multiple peers) or single player
+	var peer_count = multiplayer.get_peers().size()
+	var is_actual_multiplayer = multiplayer.has_multiplayer_peer() and peer_count > 0
+	
+	print("SPAWN: Peer count: ", peer_count)
+	print("SPAWN: Has multiplayer peer: ", multiplayer.has_multiplayer_peer())
+	print("SPAWN: Is actual multiplayer: ", is_actual_multiplayer)
+	print("SPAWN: My peer ID: ", multiplayer.get_unique_id())
+	print("SPAWN: All peers: ", multiplayer.get_peers())
+	
+	# Fallback: If single player (no other peers), manually spawn a player
+	if not is_actual_multiplayer:
+		print("SPAWN: Single player mode detected, manually spawning player...")
+		call_deferred("spawn_single_player_fallback")
+	else:
+		print("SPAWN: Multiplayer mode detected, waiting for MultiplayerSpawner...")
+
+
+
+func _on_player_joined(peer_id: int):
+	"""Handle when a new player joins during gameplay"""
+	print("Player ", peer_id, " joined the game")
+	# Player will be automatically spawned by MultiplayerSpawner
+
+func _on_player_spawned(node: Node):
+	"""Handle when MultiplayerSpawner spawns a new player"""
+	print("SPAWN: Player node spawned: ", node)
+	var new_player = node as CharacterBody3D
+	if not new_player:
+		print("SPAWN ERROR: Spawned node is not CharacterBody3D!")
+		return
+		
+	var peer_id = new_player.get_multiplayer_authority()
+	print("SPAWN: MultiplayerSpawner spawned player for peer: ", peer_id)
+	
+	# Configure the spawned player
+	new_player.player_id = peer_id
+	new_player.player_name = "Player " + str(peer_id)
+	
+	# Get spawn position and set it
+	var spawn_position = Vector3(0, 2, 20)  # Default position
+	if spawn_manager:
+		spawn_position = spawn_manager.assign_spawn_point(peer_id)
+	
+	# Position the player
+	new_player.global_position = spawn_position
+	
+	# Camera management: Only enable camera for local player
+	var camera = new_player.get_node_or_null("Head/Camera3D")
+	if camera:
+		var is_local_player = peer_id == multiplayer.get_unique_id()
+		camera.current = is_local_player
+		print("SPAWN: Camera found and set - Peer: ", peer_id, " Local: ", is_local_player, " Current: ", camera.current, " Position: ", new_player.global_position)
+	else:
+		print("SPAWN ERROR: No camera found in player for peer: ", peer_id)
+	
+	# Add to player manager
+	var add_success = player_manager.add_player(new_player)
+	print("SPAWN: Added to PlayerManager: ", add_success)
+	print("SPAWN: PlayerManager now has ", player_manager.get_player_count(), " players")
+	print("SPAWN: Primary player is now: ", player_manager.get_primary_player())
+	
+	# Set player manager reference in player
+	new_player.player_manager = player_manager
+	
+	# Add to game manager
+	if game_manager:
+		game_manager.add_player_to_game(peer_id)
+		print("SPAWN: Added to GameManager for peer: ", peer_id)
+	
+	print("SPAWN: Player configured for peer ", peer_id, " at position: ", spawn_position)
+	print("SPAWN: Total players now: ", player_manager.get_player_count())
+
+func spawn_single_player_fallback():
+	"""Manually spawn a single player when not in multiplayer mode"""
+	print("SPAWN: Creating single player manually...")
+	
+	# Create player instance
+	var new_player = PLAYER_SCENE.instantiate()
+	
+	# Set as local player
+	new_player.player_id = 1
+	new_player.player_name = "Player 1"
+	
+	# Add to scene
+	add_child(new_player)
+	
+	# Get spawn position and set it
+	var spawn_position = Vector3(0, 2, 20)
+	if spawn_manager:
+		spawn_position = spawn_manager.assign_spawn_point(1)
+	
+	new_player.global_position = spawn_position
+	
+	# Enable camera for single player
+	var camera = new_player.get_node_or_null("Head/Camera3D")
+	if camera:
+		camera.current = true
+		print("SPAWN: Camera enabled for single player")
+	
+	# Add to managers
+	player_manager.add_player(new_player)
+	new_player.player_manager = player_manager
+	
+	if game_manager:
+		game_manager.add_player_to_game(1)
+	
+	print("SPAWN: Single player created at position: ", spawn_position)
+	print("SPAWN: Total players now: ", player_manager.get_player_count())
+
+func _on_player_left(peer_id: int):
+	"""Handle when a player leaves during gameplay"""
+	print("Player ", peer_id, " left the game")
+	
+	# Find and remove the player
+	var leaving_player = player_manager.get_player_by_id(peer_id)
+	if leaving_player:
+		player_manager.remove_player(leaving_player)
+		if game_manager:
+			game_manager.remove_player_from_game(peer_id)
+		leaving_player.queue_free()
 
 
 # Signal handlers for game manager
@@ -142,7 +283,9 @@ func _unhandled_input(event: InputEvent):
 	"""Handle player menu input and centralized mouse control"""
 	# Step 7: Per-player menu handling (no global pause)
 	if event.is_action_pressed("ui_cancel"):  # ESC key
+		print("ESC pressed! Player count: ", player_manager.get_player_count())
 		var menu_player = player_manager.get_primary_player()
+		print("Primary player: ", menu_player)
 		if menu_player:
 			var player_id = player_manager.get_player_id(menu_player)
 			var ui_state = player_manager.get_player_ui_state(player_id)
@@ -150,6 +293,16 @@ func _unhandled_input(event: InputEvent):
 				close_player_menu(player_id)
 			else:
 				open_player_menu(player_id)
+		else:
+			print("ESC ERROR: No primary player found - can't open menu!")
+			# Maybe try to get any local player instead
+			var local_peer_id = multiplayer.get_unique_id()
+			var local_player = player_manager.get_player_by_id(local_peer_id)
+			if local_player:
+				print("ESC: Found local player by ID, opening menu...")
+				open_player_menu(local_peer_id)
+			else:
+				print("ESC ERROR: No local player found at all!")
 	
 	# Centralized mouse handling (Step 5: moved from player script)
 	# Only process game input for players in PLAYING state
