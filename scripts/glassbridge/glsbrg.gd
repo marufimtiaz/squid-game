@@ -204,6 +204,7 @@ func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: b
 	new_player.player_id = peer_id
 	new_player.player_name = "Player " + str(peer_id)
 	new_player.player_manager = player_manager
+	new_player.game_manager = game_manager
 	
 	# Setup camera based on whether this is local or remote
 	var camera = new_player.get_node_or_null("Head/Camera3D")

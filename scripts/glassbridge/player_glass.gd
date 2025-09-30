@@ -10,8 +10,9 @@ extends CharacterBody3D
 @export var player_id: int = 1
 @export var player_name: String = "Player 1"
 
-# Step 7: Reference to PlayerManager for UI state checking
+# References to managers for state checking and synchronization
 var player_manager: PlayerManager
+var game_manager: GameManager
 
 ## Can we move around?
 @export var can_move : bool = true
@@ -195,17 +196,22 @@ func _ready() -> void:
 	
 	animation_player.play(idle_anim)
 	
+	# Connect to game manager state changes for animation sync
+	# This will be connected when game_manager is assigned during player setup
+	call_deferred("_connect_to_game_manager")
+	
+	# Alternative: try to get GameManager from parent scene if reference is lost
+	if not game_manager:
+		var main_scene = get_tree().current_scene
+		if main_scene and main_scene.has_method("get") and main_scene.get("game_manager"):
+			game_manager = main_scene.game_manager
+			log_player("Retrieved GameManager from main scene")
+	
 	# Mouse capture is now handled by main scene (Step 5)
 	
 	# Setup animation sync for remote players
-	if not is_multiplayer_authority():
-		# For remote players, monitor state changes and sync animations
-		# Use a timer to periodically check for state changes
-		var sync_timer = Timer.new()
-		sync_timer.wait_time = 0.1
-		sync_timer.timeout.connect(_sync_remote_animation)
-		sync_timer.autostart = true
-		add_child(sync_timer)
+	# Use call_deferred to ensure multiplayer authority is properly set
+	call_deferred("_setup_animation_sync")
 
 func _on_animation_finished(animation_name: StringName):
 	"""Handle animation completion events"""
@@ -233,26 +239,48 @@ var last_synced_state: PlayerState = PlayerState.IDLE
 func _sync_remote_animation():
 	"""Sync animation for remote players based on synchronized current_state"""
 	if is_multiplayer_authority():
+		# Add periodic logging to debug authority issues
+		if randf() < 0.01:  # 1% chance per call (roughly once every 10 seconds at 0.1s intervals)
+			log_player("LOCAL AUTHORITY: I have authority, skipping remote sync (current_state: " + PlayerState.keys()[current_state] + ")")
 		return  # Only remote players need to sync
 	
 	if current_state != last_synced_state:
-		log_player("Syncing animation for remote player - state: " + PlayerState.keys()[current_state])
+		log_player("REMOTE SYNC: Animation change - state: " + PlayerState.keys()[current_state] + " (was: " + PlayerState.keys()[last_synced_state] + ")")
 		last_synced_state = current_state
 		
-		# Play the appropriate animation based on synced state
+		# Play animations without changing state (for remote players)
 		match current_state:
 			PlayerState.IDLE:
-				animation_player.play(idle_anim)
+				log_player("REMOTE SYNC: Playing idle animation")
+				_play_remote_animation(idle_anim)
 			PlayerState.WALKING:
-				animation_player.play(walk_anim)
+				log_player("REMOTE SYNC: Playing walk animation")  
+				_play_remote_animation(walk_anim)
 			PlayerState.JUMPING:
-				animation_player.play(jump_anim)
+				log_player("REMOTE SYNC: Playing jump animation")
+				_play_remote_animation(jump_anim, 0.9, 0.4)
 			PlayerState.FALLING:
-				animation_player.play(fall_anim)
+				log_player("REMOTE SYNC: Playing fall animation")
+				_play_remote_animation(fall_anim)
 			PlayerState.IMPACT:
-				animation_player.play(fallimpact_anim)
+				log_player("REMOTE SYNC: Playing impact animation")
+				_play_remote_animation(fallimpact_anim, 1.0, 0.2)
 			PlayerState.VICTORY, PlayerState.WON_WAITING:
-				animation_player.play(victory_anim)
+				log_player("REMOTE SYNC: Playing victory animation")
+				_play_remote_animation(victory_anim)
+	else:
+		# Even if state hasn't changed, ensure continuous animations keep playing
+		match current_state:
+			PlayerState.WALKING:
+				# Continuously ensure walk animation is playing (like local player)
+				if animation_player.current_animation != walk_anim:
+					log_player("REMOTE SYNC: Restarting walk animation")
+					_play_remote_animation(walk_anim)
+			PlayerState.IDLE:
+				# Ensure idle animation is playing
+				if animation_player.current_animation != idle_anim:
+					log_player("REMOTE SYNC: Restarting idle animation")
+					_play_remote_animation(idle_anim)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Don't process input if game is paused
@@ -282,6 +310,10 @@ func _physics_process(delta: float) -> void:
 	# Don't process physics if game is paused
 	if get_tree().paused:
 		return
+	
+	# Ensure GameManager connection is maintained
+	if not game_manager and get_meta("gm_retry_count", 0) < 50:
+		_connect_to_game_manager()
 	
 	# Step 9: Only local authority player gets input (multiplayer compatible)
 	if not is_multiplayer_authority():
@@ -488,3 +520,78 @@ func check_input_mappings():
 	if can_freefly and not InputMap.has_action(input_freefly):
 		push_error("Freefly disabled. No InputAction found for input_freefly: " + input_freefly)
 		can_freefly = false
+
+func _play_remote_animation(anim_name: String, speed: float = 1.0, seek_time: float = -1):
+	"""Play animation for remote players without changing state"""
+	animation_player.speed_scale = speed
+	animation_player.play(anim_name)
+	if seek_time >= 0:
+		animation_player.seek(seek_time, true)
+
+func _setup_animation_sync():
+	"""Setup animation synchronization based on authority (called deferred)"""
+	log_player("DEFERRED AUTHORITY CHECK: Player " + str(player_id) + " authority=" + str(is_multiplayer_authority()) + " my_id=" + str(multiplayer.get_unique_id()))
+	if not is_multiplayer_authority():
+		log_player("REMOTE SYNC: Setting up animation sync timer for remote player")
+		# For remote players, monitor state changes and sync animations
+		# Use a timer to periodically check for state changes
+		var sync_timer = Timer.new()
+		sync_timer.wait_time = 0.1
+		sync_timer.timeout.connect(_sync_remote_animation)
+		sync_timer.autostart = true
+		add_child(sync_timer)
+		log_player("REMOTE SYNC: Timer created and started for remote player")
+	else:
+		log_player("LOCAL PLAYER: I have authority - no remote sync needed")
+
+func _connect_to_game_manager():
+	"""Connect to game manager for state-based animation synchronization"""
+	# Try to get GameManager from stored reference or main scene
+	if not game_manager:
+		var main_scene = get_tree().current_scene
+		if main_scene and main_scene.has_method("get") and main_scene.get("game_manager"):
+			game_manager = main_scene.game_manager
+			log_player("Retrieved GameManager from main scene")
+	
+	log_player("Attempting GameManager connection, reference valid: " + str(game_manager != null))
+	if game_manager:
+		# Connect to the state_changed signal to monitor our own state changes
+		if not game_manager.state_changed.is_connected(_on_game_state_changed):
+			game_manager.state_changed.connect(_on_game_state_changed)
+			log_player("Connected to GameManager state_changed signal for animation sync")
+		# Stop retrying once connected
+		return
+	else:
+		log_player("GameManager not available yet, will retry...")
+		# Only retry a limited number of times to avoid infinite loops
+		if get_meta("gm_retry_count", 0) < 50:  # Max 50 attempts (5 seconds)
+			set_meta("gm_retry_count", get_meta("gm_retry_count", 0) + 1)
+			get_tree().create_timer(0.1).timeout.connect(_connect_to_game_manager)
+		else:
+			log_player("GameManager connection failed after 50 attempts - giving up")
+
+func _on_game_state_changed(changed_player_id: int, new_game_state):
+	"""Handle game state changes from GameManager for animation sync"""
+	if changed_player_id == player_id:
+		log_player("Game state changed to: " + str(new_game_state))
+		_sync_animation_from_game_state(new_game_state)
+
+func _sync_animation_from_game_state(game_state):
+	"""Translate GameManager.State to appropriate PlayerState animation"""
+	match game_state:
+		GameManager.State.DEAD:
+			# Player died - play death animation and disable movement
+			log_player("Game state DEAD - triggering fall impact animation")
+			can_move = false
+			velocity = Vector3.ZERO
+			play_fallimpact()
+		GameManager.State.WON:
+			# Player won - play victory animation and disable movement
+			log_player("Game state WON - triggering victory animation")
+			can_move = false
+			velocity = Vector3.ZERO
+			play_victory()
+		GameManager.State.PLAYING:
+			# Player is playing - enable movement and return to normal animation handling
+			log_player("Game state PLAYING - resuming normal animations and movement")
+			can_move = true
