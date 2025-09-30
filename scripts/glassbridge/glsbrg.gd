@@ -178,14 +178,23 @@ func _on_player_spawned(node: Node):
 	# Get spawn position - use deterministic assignment based on peer order
 	var spawn_position = Vector3(0, 2, 20)  # Default position
 	if spawn_manager:
-		# Get sorted list of all connected peers (including host)
+		# Get sorted list of all connected peers (including host and self)
 		var all_peers = multiplayer.get_peers()
-		if multiplayer.is_server():
-			all_peers.append(1)  # Add host
+		# Always add host (peer 1) to the list if not already there
+		if not all_peers.has(1):
+			all_peers.append(1)
+		# Always add self to the list if not already there
+		var my_id = multiplayer.get_unique_id()
+		if not all_peers.has(my_id):
+			all_peers.append(my_id)
 		all_peers.sort()
+		
+		print("SPAWN: DEBUG - All peers: ", all_peers, " Target peer: ", peer_id)
 		
 		# Find this peer's index in the sorted list
 		var peer_index = all_peers.find(peer_id)
+		print("SPAWN: DEBUG - Peer index: ", peer_index, " Spawn point count: ", spawn_manager.get_spawn_point_count())
+		
 		if peer_index >= 0 and peer_index < spawn_manager.get_spawn_point_count():
 			# Assign spawn point based on connection order
 			spawn_position = spawn_manager.spawn_points[peer_index]
