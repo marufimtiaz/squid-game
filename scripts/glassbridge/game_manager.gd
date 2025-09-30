@@ -116,6 +116,10 @@ func _handle_player_died(player_id: int):
 	player_manager.set_player_ui_state(player_id, PlayerManager.UIState.SPECTATING)
 	# Death is now handled by killzone waiting for fallimpact_finished
 	player_died.emit(player_id)
+	
+	# FALLBACK: Also check if game should end when any player dies
+	# This ensures the host doesn't get stuck if a client disconnects before sending fallimpact RPC
+	call_deferred("check_and_handle_game_end")
 
 func _on_player_victory_started(player_id: int):
 	print("Player ", player_id, " victory animation started")
@@ -172,17 +176,52 @@ func get_game_result() -> String:
 
 func check_and_handle_game_end():
 	"""Check if game is finished and transition to appropriate screen"""
+	print("GAME_END: Checking if game is finished...")
+	var mp = game_node.multiplayer
+	if mp:
+		print("GAME_END: I am server: ", mp.is_server())
+		print("GAME_END: My peer ID: ", mp.get_unique_id())
+	else:
+		print("GAME_END: No multiplayer available")
+	
 	if is_game_finished():
-		print("All players finished - transitioning based on result...")
+		print("All players finished - transitioning based on individual result...")
 		player_manager.freeze_all_players()
-		var result = get_game_result()
-		match result:
-			"win":
-				# Use call_deferred to avoid physics callback issues
+		
+		# Show individual result for local player
+		var local_player_state = get_local_player_state()
+		print("GAME_END: My local player state is: ", State.keys()[local_player_state])
+		
+		# Add 2-second delay to let players see the final animation
+		print("GAME_END: Waiting 2 seconds before transitioning to result screen...")
+		await game_node.get_tree().create_timer(2.0).timeout
+		
+		match local_player_state:
+			State.WON:
+				# Local player won - show end screen
 				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
-			"lose":
-				# Use call_deferred to avoid physics callback issues
+			State.DEAD:
+				# Local player died - show lose screen
 				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
+			_:
+				# Fallback - shouldn't happen but use overall result
+				var result = get_game_result()
+				match result:
+					"win":
+						game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
+					"lose":
+						game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
+
+func get_local_player_state() -> State:
+	"""Get the state of the local player on this instance"""
+	# Get the primary player (local player on this instance)
+	var primary_player = player_manager.get_primary_player()
+	if primary_player:
+		var player_id = player_manager.get_player_id(primary_player)
+		return get_player_state(player_id)
+	
+	# Fallback - if no primary player, assume single player mode
+	return get_player_state(1)
 
 func is_won() -> bool:
 	# Check if primary player won (compatibility)

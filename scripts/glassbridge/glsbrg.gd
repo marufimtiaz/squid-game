@@ -260,6 +260,12 @@ func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: b
 		game_manager.add_player_to_game(peer_id)
 		print("SPAWN: Added to GameManager for peer: ", peer_id)
 	
+	# Connect fallimpact signal to killzone for game completion check
+	if new_player.has_signal("fallimpact_finished"):
+		if not new_player.fallimpact_finished.is_connected(killzone._on_player_fallimpact_finished):
+			new_player.fallimpact_finished.connect(killzone._on_player_fallimpact_finished)
+			print("SPAWN: Connected fallimpact_finished signal for player ", peer_id)
+	
 	print("SPAWN: Player configured for peer ", peer_id, " at position: ", spawn_position)
 
 func _on_player_joined(peer_id: int):
@@ -335,12 +341,12 @@ func configure_spawned_player(new_player: CharacterBody3D):
 	new_player.global_position = spawn_position
 	
 	# Camera management: Only enable camera for local player
-	var is_local_player = peer_id == multiplayer.get_unique_id()
+	var is_local_in_configure = peer_id == multiplayer.get_unique_id()
 	var camera = new_player.get_node_or_null("Head/Camera3D")
 	if camera:
-		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_player, " MyID: ", multiplayer.get_unique_id())
+		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_in_configure, " MyID: ", multiplayer.get_unique_id())
 		
-		if is_local_player:
+		if is_local_in_configure:
 			# For local player: disable ALL other cameras first, then enable this one
 			print("SPAWN: Setting up LOCAL player camera for peer: ", peer_id)
 			
@@ -606,12 +612,12 @@ func _on_player_spawned(node: Node):
 	new_player.global_position = spawn_position
 	
 	# Camera management: Only enable camera for local player
-	var is_local_player = peer_id == multiplayer.get_unique_id()
+	var is_local_in_spawned = peer_id == multiplayer.get_unique_id()
 	var camera = new_player.get_node_or_null("Head/Camera3D")
 	if camera:
-		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_player, " MyID: ", multiplayer.get_unique_id())
+		print("SPAWN: Camera setup - Peer: ", peer_id, " Local: ", is_local_in_spawned, " MyID: ", multiplayer.get_unique_id())
 		
-		if is_local_player:
+		if is_local_in_spawned:
 			# For local player: disable ALL other cameras first, then enable this one
 			print("SPAWN: Setting up LOCAL player camera for peer: ", peer_id)
 			
@@ -711,15 +717,70 @@ func spawn_single_player_fallback():
 
 func _on_player_left(peer_id: int):
 	"""Handle when a player leaves during gameplay"""
-	print("Player ", peer_id, " left the game")
+	print("DISCONNECT: Player ", peer_id, " left the game")
+	print("DISCONNECT: I am server: ", multiplayer.is_server())
+	print("DISCONNECT: My peer ID: ", multiplayer.get_unique_id())
 	
-	# Find and remove the player
+	# Check if HOST disconnected (peer_id 1 is always the host)
+	if peer_id == 1 and not multiplayer.is_server():
+		print("HOST DISCONNECTED! Handling graceful client transition...")
+		handle_host_disconnection()
+		return
+	
+	# Regular player left - remove them
 	var leaving_player = player_manager.get_player_by_id(peer_id)
 	if leaving_player:
 		player_manager.remove_player(leaving_player)
 		if game_manager:
 			game_manager.remove_player_from_game(peer_id)
 		leaving_player.queue_free()
+
+func handle_host_disconnection():
+	"""Handle when host leaves - transition client based on their state"""
+	print("DISCONNECTION: Host left, determining my result...")
+	
+	# Get my state before multiplayer becomes invalid
+	var my_state = GameManager.State.PLAYING  # Default fallback
+	
+	if game_manager:
+		my_state = game_manager.get_local_player_state()
+		print("DISCONNECTION: My state is: ", GameManager.State.keys()[my_state])
+	
+	# Clean up multiplayer properly
+	cleanup_multiplayer_session()
+	
+	# Transition based on my result (your perfect logic!)
+	match my_state:
+		GameManager.State.WON:
+			print("DISCONNECTION: I won! Going to end screen...")
+			get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
+		GameManager.State.DEAD:
+			print("DISCONNECTION: I died! Going to lose screen...")
+			get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
+		_:  # State.PLAYING or any other state
+			print("DISCONNECTION: I was still playing! Going back to multiplayer screen...")
+			get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/multiplayer_screen.tscn")
+
+func cleanup_multiplayer_session():
+	"""Clean up multiplayer session to avoid issues joining next game"""
+	print("CLEANUP: Cleaning up multiplayer session...")
+	
+	# Disconnect all multiplayer signals
+	if multiplayer.peer_connected.is_connected(_on_player_joined):
+		multiplayer.peer_connected.disconnect(_on_player_joined)
+	if multiplayer.peer_disconnected.is_connected(_on_player_left):
+		multiplayer.peer_disconnected.disconnect(_on_player_left)
+	
+	# Clear the multiplayer peer to fully disconnect
+	if multiplayer.has_multiplayer_peer():
+		multiplayer.multiplayer_peer = null
+		print("CLEANUP: Multiplayer peer cleared")
+	
+	# Release mouse if it was captured
+	if player_manager:
+		player_manager.release_mouse()
+	
+	print("CLEANUP: Session cleanup complete - ready for next game!")
 
 
 # Signal handlers for game manager
@@ -728,6 +789,15 @@ func _on_player_won(player_id: int):
 
 func _on_player_died(player_id: int):
 	print("Main script: Player ", player_id, " died!")
+
+func is_local_player(player_id: int) -> bool:
+	"""Check if the given player ID is the local player on this instance"""
+	if not multiplayer.has_multiplayer_peer():
+		# Single player mode - assume player 1 is local
+		return player_id == 1
+	else:
+		# Multiplayer mode - check against local multiplayer ID
+		return player_id == multiplayer.get_unique_id()
 
 func _on_game_state_changed(player_id: int, new_state):
 	print("Main script: Player ", player_id, " state changed to ", GameManager.State.keys()[new_state])
@@ -741,6 +811,9 @@ func _on_timer_timeout() -> void:
 	pass
 
 func _exit_tree():
+	# Clean up multiplayer session first
+	cleanup_multiplayer_session()
+	
 	# Clean up managers
 	if platform_manager:
 		platform_manager.cleanup()

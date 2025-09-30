@@ -49,6 +49,21 @@ func _on_player_hit_killzone(player_id: int):
 func _on_player_fallimpact_finished(player_id: int):
 	# This gets called when the fallimpact animation finishes
 	print("Player ", player_id, " fallimpact animation finished")
+	print("FALLIMPACT: About to send RPC for player ", player_id)
+	print("FALLIMPACT: I am server: ", multiplayer.is_server())
+	print("FALLIMPACT: My peer ID: ", multiplayer.get_unique_id())
 	# Step 6: Now check if all players are done (after death animation)
+	# Use RPC to notify ALL instances that a player finished
 	if game_manager:
+		notify_all_player_finished.rpc(player_id)
+		print("FALLIMPACT: RPC sent for player ", player_id)
+
+@rpc("any_peer", "call_local", "reliable")
+func notify_all_player_finished(player_id: int):
+	"""RPC to notify all instances when a player finishes (dies or wins)"""
+	print("RPC RECEIVED: Player ", player_id, " finished - checking game end on all instances")
+	print("RPC RECEIVED: I am server: ", multiplayer.is_server())
+	print("RPC RECEIVED: My peer ID: ", multiplayer.get_unique_id())
+	if game_manager:
+		print("RPC RECEIVED: Calling check_and_handle_game_end")
 		game_manager.call_deferred("check_and_handle_game_end")
