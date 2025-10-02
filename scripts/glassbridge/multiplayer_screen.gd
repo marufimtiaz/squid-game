@@ -16,7 +16,9 @@ var is_hosting: bool = false  # Track if we're actually hosting
 
 func _ready():
 	# Hide IP label initially
-	host_ip_label.visible = false
+	var local_ip = get_local_ip()
+	host_ip_label.text = "Host IP: " + local_ip
+	host_ip_label.visible = true
 	status_label.text = ""  # Empty by default
 
 # REMOVED: SPACE bar game starting - host goes directly to game now
