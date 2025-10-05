@@ -60,13 +60,15 @@ func _ready() -> void:
 	game_manager.state_changed.connect(_on_game_state_changed)
 	
 	# MULTIPLAYER FIX: Both host and clients create platforms, but only host determines configuration
+	var platform_layers: Array[Node] = [layer3, layer4]  # Explicit typed array for flexibility
+	
 	if multiplayer.is_server():
 		print("HOST: Generating platforms (will sync configuration to clients as they join)...")
-		platform_manager.setup_platforms(layer3, layer4)
+		platform_manager.setup_platforms(platform_layers)
 	else:
 		print("CLIENT: Creating platforms and waiting for host configuration...")
 		# Clients need to create the platforms first, then configuration will be applied
-		platform_manager.create_empty_platforms(layer3, layer4)
+		platform_manager.create_empty_platforms(platform_layers)
 	
 	# Setup killzone reference to game manager
 	#var killzone = $KillZone
@@ -972,7 +974,8 @@ func sync_platform_configuration_to_clients(config_data: Array):
 	"""RPC: Host sends platform configuration to all clients"""
 	if not multiplayer.is_server():
 		print("CLIENT: Received platform configuration from host with ", config_data.size(), " platforms")
-		platform_manager.apply_platform_configuration(config_data, layer3, layer4)
+		var platform_layers: Array[Node] = [layer3, layer4]  # Use same typed array as setup
+		platform_manager.apply_platform_configuration(config_data, platform_layers)
 	else:
 		print("HOST: Synced platform configuration to all clients")
 

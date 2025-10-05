@@ -11,6 +11,20 @@ var brittle_timers = {}
 # Step 8: Track which players are on each platform for sync
 var platform_affected_players = {}  # platform -> Array[int]
 
+# SCALABILITY NOTE: Platform system supports multiple layers via explicit arrays
+#
+# CURRENT USAGE (Layer3 & Layer4):
+#   var platform_layers = [layer3, layer4]
+#   platform_manager.setup_platforms(platform_layers)
+#   platform_manager.create_empty_platforms(platform_layers)
+#
+# FOR MORE LAYERS (easily extensible):
+#   var platform_layers = [layer1, layer2, layer3, layer4, layer5]  # As many as needed
+#   platform_manager.setup_platforms(platform_layers)
+#
+# AUTO-DISCOVERY OPTION (finds all Layer* nodes):
+#   platform_manager.setup_platforms_auto($Platforms)  # Discovers layers automatically
+
 const BREAK_TIME: float = 1.0
 
 var game_node: Node3D
@@ -34,18 +48,19 @@ func setup_layer_platforms(layer: Node):
 		else:
 			setup_platform(platform, Glass.SOLID)
 
-func setup_platforms(layer3: Node, layer4: Node):
-	setup_layer_platforms(layer3)
-	setup_layer_platforms(layer4)
+func setup_platforms(layers: Array[Node]):
+	"""Setup platforms for multiple layers"""
+	for layer in layers:
+		setup_layer_platforms(layer)
 
-func create_empty_platforms(layer3: Node, layer4: Node):
+func create_empty_platforms(layers: Array[Node]):
 	"""Create platforms for clients without configuration - all solid initially"""
 	print("CLIENT: Creating platforms as solid, waiting for host configuration...")
 	
-	# Get all platforms in both layers and set them all as solid
+	# Get all platforms in all layers and set them all as solid
 	var all_platforms = []
-	all_platforms.append_array(layer3.get_children().filter(func(child): return child is CSGBox3D))
-	all_platforms.append_array(layer4.get_children().filter(func(child): return child is CSGBox3D))
+	for layer in layers:
+		all_platforms.append_array(layer.get_children().filter(func(child): return child is CSGBox3D))
 	
 	for platform in all_platforms:
 		setup_platform(platform, Glass.SOLID)
@@ -278,6 +293,33 @@ func set_platform_state(platform: CSGBox3D, state: Glass):
 	var platform_path = str(platform.get_path())
 	platform_states[platform_path] = state
 
+func auto_discover_layers(platforms_parent: Node) -> Array[Node]:
+	"""Automatically discover all layer nodes under a Platforms parent node"""
+	var layers: Array[Node] = []
+	
+	for child in platforms_parent.get_children():
+		if child.name.begins_with("Layer") or child.name.to_lower().contains("layer"):
+			layers.append(child)
+			print("AUTO-DISCOVERED: Found layer ", child.name)
+	
+	print("AUTO-DISCOVERED: Found ", layers.size(), " total layers")
+	return layers
+
+func setup_platforms_auto(platforms_parent: Node):
+	"""Convenience method to automatically discover and setup all layers"""
+	var layers = auto_discover_layers(platforms_parent)
+	setup_platforms(layers)
+
+func create_empty_platforms_auto(platforms_parent: Node):
+	"""Convenience method to automatically discover and create empty platforms for all layers"""
+	var layers = auto_discover_layers(platforms_parent)
+	create_empty_platforms(layers)
+
+func apply_platform_configuration_auto(config_data: Array, platforms_parent: Node):
+	"""Convenience method to automatically discover layers and apply configuration"""
+	var layers = auto_discover_layers(platforms_parent)
+	apply_platform_configuration(config_data, layers)
+
 func cleanup():
 	# Clean up all timers
 	for timer in brittle_timers.values():
@@ -488,14 +530,14 @@ func get_platform_configuration_data() -> Array:
 	print("HOST: Collected configuration for ", config_data.size(), " total platforms")
 	return config_data
 
-func apply_platform_configuration(config_data: Array, layer3: Node, layer4: Node):
+func apply_platform_configuration(config_data: Array, layers: Array[Node]):
 	"""Apply platform configuration received from host"""
 	print("CLIENT: Applying platform configuration for ", config_data.size(), " platforms")
 	
-	# Get all platforms in both layers
+	# Get all platforms in all layers
 	var all_platforms = []
-	all_platforms.append_array(layer3.get_children().filter(func(child): return child is CSGBox3D))
-	all_platforms.append_array(layer4.get_children().filter(func(child): return child is CSGBox3D))
+	for layer in layers:
+		all_platforms.append_array(layer.get_children().filter(func(child): return child is CSGBox3D))
 	
 	# Create a lookup by path AND name for fast matching
 	var platform_by_path = {}
