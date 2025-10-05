@@ -1,10 +1,11 @@
 class_name PlatformManager
 extends RefCounted
 
-enum Glass { SOLID, BRITTLE, BROKEN }
+enum Glass { SOLID, BRITTLE, BREAKING, BROKEN }
 
-# Dictionary to track platform states
-var platform_states = {}
+# Simplified storage: track everything by path string for consistency
+var platform_states = {}  # path_string -> Glass state  
+var platform_objects = {}  # path_string -> CSGBox3D (null for broken platforms)
 # Dictionary to track timers for brittle platforms
 var brittle_timers = {}
 # Step 8: Track which players are on each platform for sync
@@ -19,65 +20,103 @@ func _init(init_game_node: Node3D, init_player_manager: PlayerManager):
 	self.game_node = init_game_node
 	self.player_manager = init_player_manager
 
-func setup_platforms(layer3: Node, layer4: Node):
-	# Get the list of platforms under the layer and shuffle
-	var glass_platforms_l3 = layer3.get_children().filter(func(child): return child is CSGBox3D)
-	glass_platforms_l3.shuffle()
+func setup_layer_platforms(layer: Node):
+	"""Setup platforms for a single layer with half brittle, half solid"""
+	var glass_platforms = layer.get_children().filter(func(child): return child is CSGBox3D)
+	glass_platforms.shuffle()
+	
+	var platforms_to_make_brittle = (len(glass_platforms) / 2.0) as int
+	
+	for i in range(len(glass_platforms)):
+		var platform = glass_platforms[i]
+		if i < platforms_to_make_brittle:
+			setup_platform(platform, Glass.BRITTLE)
+		else:
+			setup_platform(platform, Glass.SOLID)
 
-	var glass_platforms_l4 = layer4.get_children().filter(func(child): return child is CSGBox3D)
-	glass_platforms_l4.shuffle()
+func setup_platforms(layer3: Node, layer4: Node):
+	setup_layer_platforms(layer3)
+	setup_layer_platforms(layer4)
+
+func create_empty_platforms(layer3: Node, layer4: Node):
+	"""Create platforms for clients without configuration - all solid initially"""
+	print("CLIENT: Creating platforms as solid, waiting for host configuration...")
 	
-	# Set half the platforms as brittle
-	var platforms_to_make_brittle_l3 = (len(glass_platforms_l3)/2.0) as int
-	var platforms_to_make_brittle_l4 = (len(glass_platforms_l4)/2.0) as int
+	# Get all platforms in both layers and set them all as solid
+	var all_platforms = []
+	all_platforms.append_array(layer3.get_children().filter(func(child): return child is CSGBox3D))
+	all_platforms.append_array(layer4.get_children().filter(func(child): return child is CSGBox3D))
 	
-	# Set the first N platforms in each layer as brittle, rest as solid
-	for i in range(len(glass_platforms_l3)):
-		var platform = glass_platforms_l3[i]
-		if i < platforms_to_make_brittle_l3:
-			setup_platform(platform, Glass.BRITTLE)
-		else:
-			setup_platform(platform, Glass.SOLID)
-		
-	for i in range(len(glass_platforms_l4)):
-		var platform = glass_platforms_l4[i]
-		if i < platforms_to_make_brittle_l4:
-			setup_platform(platform, Glass.BRITTLE)
-		else:
-			setup_platform(platform, Glass.SOLID)
+	for platform in all_platforms:
+		setup_platform(platform, Glass.SOLID)
+		print("CLIENT: Created platform ", platform.name, " as SOLID (awaiting configuration)")
+
+func is_platform_valid(platform: CSGBox3D) -> bool:
+	"""Check if a platform is valid and not freed"""
+	return platform != null and is_instance_valid(platform)
+
+func create_brittle_detector(platform: CSGBox3D):
+	"""Create collision detection area for brittle platforms"""
+	var area = Area3D.new()
+	area.name = "BrittleDetector_" + platform.name
+	var collision_shape = CollisionShape3D.new()
+	var box_shape = BoxShape3D.new()
+	
+	# Match the platform's size but make it slightly larger and positioned correctly
+	box_shape.size = platform.size + Vector3(0.5, 0.5, 0.5)  # Slightly larger for better detection
+	collision_shape.shape = box_shape
+	
+	# Position the area at the same location as the platform
+	area.position = Vector3.ZERO  # Relative to platform
+	collision_shape.position = Vector3.ZERO
+	
+	area.add_child(collision_shape)
+	platform.add_child(area)
+	
+	print("Created Area3D for brittle platform: ", platform.name, " with size: ", box_shape.size)
+	print("Platform global position: ", platform.global_position)
+	print("Area3D local position: ", area.position)
+	
+	# Connect the collision signal with the correct signature
+	area.body_entered.connect(_on_brittle_platform_entered.bind(platform))
+	print("Connected body_entered signal for platform: ", platform.name)
+
+func create_platform_timer(platform: CSGBox3D) -> Timer:
+	"""Create and configure a timer for brittle platform breaking"""
+	var timer = Timer.new()
+	timer.wait_time = BREAK_TIME
+	timer.one_shot = true
+	timer.timeout.connect(_on_brittle_timer_timeout.bind(platform))
+	game_node.add_child(timer)
+	timer.start()
+	
+	print("Timer created and started for platform: ", platform.name, " - wait time: ", timer.wait_time)
+	return timer
+
+func has_active_timer(platform: CSGBox3D) -> bool:
+	"""Check if platform has an active timer"""
+	return platform in brittle_timers and brittle_timers[platform] != null
+
+func cleanup_platform_timer(platform: CSGBox3D):
+	"""Clean up timer and affected players for a platform"""
+	if platform in brittle_timers:
+		var timer = brittle_timers[platform]
+		print("Cleaning up timer for platform: ", platform.name)
+		timer.queue_free()
+		brittle_timers.erase(platform)
+	
+	if platform in platform_affected_players:
+		platform_affected_players.erase(platform)
 
 func setup_platform(platform: CSGBox3D, glass_type: Glass):
-	platform_states[platform] = glass_type
+	var platform_path = str(platform.get_path())
+	platform_states[platform_path] = glass_type
+	platform_objects[platform_path] = platform
 	
 	if glass_type == Glass.BRITTLE:
 		change_platform_color(platform, Color.ORANGE)  # Orange for brittle
 		print("Set platform as brittle: ", platform.name)
-		
-		# Add collision detection for brittle platforms
-		var area = Area3D.new()
-		area.name = "BrittleDetector_" + platform.name
-		var collision_shape = CollisionShape3D.new()
-		var box_shape = BoxShape3D.new()
-		
-		# Match the platform's size but make it slightly larger and positioned correctly
-		box_shape.size = platform.size + Vector3(0.5, 0.5, 0.5)  # Slightly larger for better detection
-		collision_shape.shape = box_shape
-		
-		# Position the area at the same location as the platform
-		area.position = Vector3.ZERO  # Relative to platform
-		collision_shape.position = Vector3.ZERO
-		
-		area.add_child(collision_shape)
-		platform.add_child(area)
-		
-		print("Created Area3D for brittle platform: ", platform.name, " with size: ", box_shape.size)
-		print("Platform global position: ", platform.global_position)
-		print("Area3D local position: ", area.position)
-		
-		# Connect the collision signal with the correct signature
-		area.body_entered.connect(_on_brittle_platform_entered.bind(platform))
-		print("Connected body_entered signal for platform: ", platform.name)
-		
+		create_brittle_detector(platform)
 	else:
 		#change_platform_color(platform, Color.BLUE)    # Blue for solid
 		print("Set platform as solid: ", platform.name)
@@ -85,37 +124,54 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 func disable_platform(platform: CSGBox3D):
 	print("Deleting platform: ", platform.name, " - Setting state to BROKEN and cleaning up")
 	
-	# Set state to BROKEN first
-	platform_states[platform] = Glass.BROKEN  
+	# Get platform path and update state
+	var platform_path = str(platform.get_path())
+	platform_states[platform_path] = Glass.BROKEN
 	
-	# Clean up timer if it exists
-	if platform in brittle_timers and brittle_timers[platform]:
-		brittle_timers[platform].queue_free()
-		brittle_timers.erase(platform)
+	# Remove from active objects (but keep the state for late joiners)
+	platform_objects[platform_path] = null
 	
-	# Clean up affected players
-	if platform in platform_affected_players:
-		platform_affected_players.erase(platform)
+	# Trigger immediate sync to clients if we're the host
+	if game_node.multiplayer.is_server():
+		print("HOST: Triggering immediate platform sync for broken platform: ", platform.name)
+		# Use the game_node to call sync method
+		if game_node.has_method("sync_platform_break_to_clients"):
+			game_node.sync_platform_break_to_clients(platform_path)
+		else:
+			print("HOST: Warning - sync method not found on game_node")
 	
 	# Delete the platform
 	platform.queue_free()
 	
 	# Remove from state tracking after a short delay to allow one last sync
-	call_deferred("_cleanup_single_platform", platform)
+	call_deferred("_cleanup_single_platform", platform_path)
 
-func _cleanup_single_platform(platform: CSGBox3D):
+func _cleanup_platform_references(platform_path: String):
+	"""Clean up all references to a specific platform by path"""
+	# Don't remove broken platforms from platform_states - keep them for late-joining clients
+	# Only clean up from platform_objects
+	if platform_path in platform_objects:
+		print("PLATFORM_CLEANUP: Removing platform object reference for path: ", platform_path)
+		platform_objects.erase(platform_path)
+	
+	# Clean up timer references - need to update these to use paths too
+	# For now, we'll leave brittle_timers and platform_affected_players as-is
+	# since they may still be using object references
+	
+	print("PLATFORM_CLEANUP: Cleaned up object references for platform path: ", platform_path)
+
+func _cleanup_single_platform(platform_path: String):
 	"""Clean up a single platform's references after it's been freed"""
-	if platform in platform_states:
-		platform_states.erase(platform)
-		print("PLATFORM_CLEANUP: Cleaned up references for freed platform")
+	_cleanup_platform_references(platform_path)
 
 func _on_brittle_platform_entered(body: Node3D, platform: CSGBox3D):
 	print("Body entered brittle platform area! Body: ", body.name, " Platform: ", platform.name)
-	print("Platform current state: ", platform_states[platform])
+	var current_state = get_platform_state(platform)
+	print("Platform current state: ", current_state)
 	
-	# Only trigger if platform is still brittle (not broken)
-	if platform_states[platform] != Glass.BRITTLE:
-		print("Platform ", platform.name, " is not brittle anymore (state: ", platform_states[platform], ") - ignoring collision")
+	# Only trigger if platform is still brittle (not breaking or broken)
+	if current_state != Glass.BRITTLE:
+		print("Platform ", platform.name, " is not brittle anymore (state: ", Glass.keys()[current_state], ") - ignoring collision")
 		return
 	
 	# Check if it's any managed player (multiplayer-ready logic)
@@ -134,17 +190,30 @@ func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
 	print("start_brittle_timer called for platform: ", platform.name, " by player: ", triggering_player_id)
 	
 	# Check platform state before starting timer
-	if platform_states[platform] != Glass.BRITTLE:
-		print("Platform ", platform.name, " is no longer brittle (state: ", platform_states[platform], ") - cannot start timer")
+	var current_state = get_platform_state(platform)
+	if current_state != Glass.BRITTLE:
+		print("Platform ", platform.name, " is no longer brittle (state: ", current_state, ") - cannot start timer")
 		return
 	
 	# Don't start timer if one is already running for this platform
-	if platform in brittle_timers:
+	if has_active_timer(platform):
 		print("Timer already running for platform: ", platform.name, " - skipping")
 		return
 		
 	print("Starting ", BREAK_TIME, "-second timer for brittle platform: ", platform.name, " triggered by player: ", triggering_player_id)
-	change_platform_color(platform, Color.YELLOW)  # Change to yellow when timer starts
+	
+	# Change state to BREAKING and update visual
+	set_platform_state(platform, Glass.BREAKING)
+	change_platform_color(platform, Color.YELLOW)  # Change to yellow when breaking starts
+	
+	# Trigger immediate sync to clients for BREAKING state if we're the host
+	if game_node.multiplayer.is_server():
+		print("HOST: Triggering immediate platform BREAKING sync for: ", platform.name)
+		# Use the game_node to call sync method for breaking state
+		if game_node.has_method("sync_platform_breaking_to_clients"):
+			game_node.sync_platform_breaking_to_clients(platform.get_path())
+		else:
+			print("HOST: Warning - breaking sync method not found on game_node")
 	
 	# Step 8: Track affected player for sync
 	var affected_players: Array[int] = []
@@ -153,15 +222,8 @@ func start_brittle_timer(platform: CSGBox3D, triggering_player_id: int = 0):
 	platform_affected_players[platform] = affected_players
 	
 	# Create and start timer
-	var timer = Timer.new()
-	timer.wait_time = BREAK_TIME
-	timer.one_shot = true
-	timer.timeout.connect(_on_brittle_timer_timeout.bind(platform))
-	game_node.add_child(timer)
-	timer.start()
-	
+	var timer = create_platform_timer(platform)
 	brittle_timers[platform] = timer
-	print("Timer created and started for platform: ", platform.name, " - wait time: ", timer.wait_time)
 	
 	# Step 8: Log sync data for this platform
 	var sync_data = create_platform_sync_data(platform)
@@ -183,13 +245,8 @@ func _on_brittle_timer_timeout(platform: CSGBox3D):
 	
 	disable_platform(platform)
 	
-	# Clean up timer
-	if platform in brittle_timers:
-		var timer = brittle_timers[platform]
-		print("Cleaning up timer for platform: ", platform.name)
-		timer.queue_free()
-		brittle_timers.erase(platform)
-		platform_affected_players.erase(platform)  # Clean up affected players too
+	# Clean up timer and affected players
+	cleanup_platform_timer(platform)
 	print("==========================")
 
 func change_platform_color(platform: CSGBox3D, new_color: Color):
@@ -210,7 +267,16 @@ func change_platform_color(platform: CSGBox3D, new_color: Color):
 	material.albedo_color = Color(new_color.r, new_color.g, new_color.b, current_color.a)
 
 func get_platform_state(platform: CSGBox3D) -> Glass:
-	return platform_states.get(platform, Glass.SOLID)
+	if not platform or not is_instance_valid(platform):
+		return Glass.SOLID
+	var platform_path = str(platform.get_path())
+	return platform_states.get(platform_path, Glass.SOLID)
+
+func set_platform_state(platform: CSGBox3D, state: Glass):
+	if not platform or not is_instance_valid(platform):
+		return
+	var platform_path = str(platform.get_path())
+	platform_states[platform_path] = state
 
 func cleanup():
 	# Clean up all timers
@@ -219,6 +285,7 @@ func cleanup():
 			timer.queue_free()
 	brittle_timers.clear()
 	platform_states.clear()
+	platform_objects.clear()
 	platform_affected_players.clear()
 
 # Step 9: Dynamic Player Management Methods
@@ -254,9 +321,16 @@ func get_platform_id(platform: CSGBox3D) -> String:
 	else:
 		return ""
 
+func find_platform_by_id(platform_id: String) -> CSGBox3D:
+	"""Find platform by its path ID"""
+	var platform_node = game_node.get_node_or_null(NodePath(platform_id))
+	if platform_node and platform_node is CSGBox3D:
+		return platform_node
+	return null
+
 func create_platform_sync_data(platform: CSGBox3D) -> SyncData.PlatformSyncData:
 	"""Create sync data for a specific platform"""
-	if not platform or not is_instance_valid(platform):
+	if not is_platform_valid(platform):
 		return null
 	
 	var platform_id = get_platform_id(platform)
@@ -285,15 +359,49 @@ func apply_platform_sync_data(sync_data: SyncData.PlatformSyncData):
 	if not sync_data:
 		return
 	
-	# Find platform by ID (for now we don't have a reverse lookup, this is preparatory)
-	# In a real multiplayer scenario, we'd maintain a platform registry
-	print("Would apply sync data for platform: ", sync_data.platform_id, " state: ", sync_data.state, " timer: ", sync_data.timer_remaining)
+	# Skip on host - host is the authority
+	if game_node.multiplayer.is_server():
+		return
 	
-	# This is a preparatory method - in real multiplayer we would:
-	# 1. Find the platform by platform_id
-	# 2. Set its state to sync_data.state
-	# 3. If timer_remaining > 0, start/adjust timer to that remaining time
-	# 4. Update affected_players list
+	# Find the platform by ID
+	var platform = find_platform_by_id(sync_data.platform_id)
+	if not platform:
+		print("CLIENT SYNC: Platform not found: ", sync_data.platform_id)
+		return
+	
+	var current_state = get_platform_state(platform)
+	
+	# Apply state changes
+	if sync_data.state != current_state:
+		print("CLIENT SYNC: Updating platform ", platform.name, " from ", Glass.keys()[current_state], " to ", Glass.keys()[sync_data.state])
+		
+		if sync_data.state == Glass.BROKEN:
+			# Platform should be broken - remove it
+			print("CLIENT SYNC: Breaking platform ", platform.name)
+			set_platform_state(platform, Glass.BROKEN)
+			var platform_path = str(platform.get_path())
+			platform_objects[platform_path] = null
+			platform.queue_free()
+			call_deferred("_cleanup_single_platform", platform_path)
+		elif sync_data.state == Glass.BREAKING:
+			# Platform is breaking - update color and state
+			print("CLIENT SYNC: Platform ", platform.name, " is now breaking")
+			set_platform_state(platform, Glass.BREAKING)
+			change_platform_color(platform, Color.YELLOW)
+		elif sync_data.state == Glass.BRITTLE and current_state == Glass.SOLID:
+			# Platform changed to brittle - update color and state
+			set_platform_state(platform, Glass.BRITTLE)
+			change_platform_color(platform, Color.ORANGE)
+		
+	# Update affected players
+	var path_for_players = str(platform.get_path()) 
+	if path_for_players in platform_states and sync_data.affected_players.size() > 0:
+		platform_affected_players[platform] = sync_data.affected_players.duplicate()
+		
+		# If there's a timer remaining and we don't have one, start visual countdown
+		if sync_data.timer_remaining > 0.0 and not has_active_timer(platform):
+			change_platform_color(platform, Color.YELLOW)  # Show countdown visual
+			print("CLIENT SYNC: Platform ", platform.name, " should break in ", sync_data.timer_remaining, " seconds")
 
 func get_all_platforms_sync_data() -> Dictionary:
 	"""Get sync data for all platforms that have active state"""
@@ -303,47 +411,42 @@ func get_all_platforms_sync_data() -> Dictionary:
 	cleanup_freed_platforms()
 	
 	# Include all platforms with non-default state or active timers
-	for platform in platform_states:
-		# Skip if platform is invalid/freed
-		if not is_instance_valid(platform):
+	for platform_path in platform_states.keys():
+		var platform_obj = platform_objects.get(platform_path, null)
+		var state = platform_states[platform_path]
+		
+		# Skip broken platforms for sync (they're handled differently)
+		if state == Glass.BROKEN:
 			continue
 			
-		var state = platform_states[platform]
-		var has_timer = platform in brittle_timers and brittle_timers[platform] != null
+		# For active platforms, check if they have timers
+		var has_timer = false
+		if platform_obj and is_instance_valid(platform_obj):
+			has_timer = has_active_timer(platform_obj)
 		
-		# Include platforms that are not solid (brittle/broken) or have active timers
+		# Include platforms that are not solid (brittle/breaking) or have active timers
 		if state != Glass.SOLID or has_timer:
-			var platform_id = get_platform_id(platform)
-			sync_data[platform_id] = create_platform_sync_data(platform)
+			if platform_obj and is_instance_valid(platform_obj):
+				var platform_id = get_platform_id(platform_obj)
+				sync_data[platform_id] = create_platform_sync_data(platform_obj)
 	
 	return sync_data
 
 func cleanup_freed_platforms():
-	"""Remove references to freed platforms from all tracking dictionaries"""
-	var platforms_to_remove = []
+	"""Remove references to freed platforms from tracking dictionaries"""
+	var paths_to_remove = []
 	
-	# Find all freed platforms
-	for platform in platform_states:
-		if not is_instance_valid(platform):
-			platforms_to_remove.append(platform)
+	# Find all freed platforms by checking platform_objects
+	for platform_path in platform_objects:
+		var platform_obj = platform_objects[platform_path]
+		if platform_obj == null or not is_instance_valid(platform_obj):
+			paths_to_remove.append(platform_path)
 	
-	# Remove them from all tracking dictionaries
-	for platform in platforms_to_remove:
-		print("PLATFORM_CLEANUP: Removing freed platform references for ", platform.name if platform else "unknown")
-		
-		# Remove from state tracking
-		if platform in platform_states:
-			platform_states.erase(platform)
-		
-		# Remove from timer tracking  
-		if platform in brittle_timers:
-			if brittle_timers[platform] and is_instance_valid(brittle_timers[platform]):
-				brittle_timers[platform].queue_free()
-			brittle_timers.erase(platform)
-		
-		# Remove from affected players tracking
-		if platform in platform_affected_players:
-			platform_affected_players.erase(platform)
+	# Remove them from platform_objects (but keep states for broken platforms)
+	for platform_path in paths_to_remove:
+		print("PLATFORM_CLEANUP: Removing freed platform object reference for ", platform_path)
+		platform_objects.erase(platform_path)
+		# Note: We keep states in platform_states for broken platforms to sync to late joiners
 
 func apply_all_platforms_sync_data(platforms_sync_data: Dictionary):
 	"""Apply sync data to all platforms"""
@@ -355,18 +458,34 @@ func get_platform_configuration_data() -> Array:
 	"""Get platform configuration data for multiplayer syncing"""
 	var config_data = []
 	
-	# Collect all platform data with their glass types
-	for platform in platform_states.keys():
-		var glass_type = platform_states[platform]  # This is just the Glass enum value
-		var platform_info = {
-			"path": platform.get_path(),
-			"glass_type": glass_type,
-			"position": platform.global_position,
-			"is_broken": (glass_type == Glass.BROKEN)
-		}
-		config_data.append(platform_info)
+	# Clean up completely freed platforms first (but keep broken ones in states)
+	cleanup_freed_platforms()
 	
-	print("HOST: Collected configuration for ", config_data.size(), " platforms")
+	# Collect all platform data including broken ones - now using path-based storage
+	for platform_path in platform_states.keys():
+		var glass_type = platform_states[platform_path]
+		var platform_obj = platform_objects.get(platform_path, null)
+		
+		var platform_info = {
+			"path": platform_path,
+			"glass_type": glass_type,
+			"position": Vector3.ZERO,
+			"is_broken": (glass_type == Glass.BROKEN),
+			"is_breaking": (glass_type == Glass.BREAKING)
+		}
+		
+		# Try to get position from active platform object
+		if platform_obj and is_instance_valid(platform_obj):
+			platform_info["position"] = platform_obj.global_position
+			
+		config_data.append(platform_info)
+		
+		if glass_type == Glass.BROKEN:
+			print("HOST: Including broken platform in config: ", platform_path)
+		elif glass_type == Glass.BREAKING:
+			print("HOST: Including breaking platform in config: ", platform_path)
+	
+	print("HOST: Collected configuration for ", config_data.size(), " total platforms")
 	return config_data
 
 func apply_platform_configuration(config_data: Array, layer3: Node, layer4: Node):
@@ -378,19 +497,51 @@ func apply_platform_configuration(config_data: Array, layer3: Node, layer4: Node
 	all_platforms.append_array(layer3.get_children().filter(func(child): return child is CSGBox3D))
 	all_platforms.append_array(layer4.get_children().filter(func(child): return child is CSGBox3D))
 	
-	# Create a lookup by path for fast matching
+	# Create a lookup by path AND name for fast matching
 	var platform_by_path = {}
+	var platform_by_name = {}
 	for platform in all_platforms:
-		platform_by_path[platform.get_path()] = platform
+		var client_path = str(platform.get_path())
+		platform_by_path[client_path] = platform
+		platform_by_name[platform.name] = platform
 	
 	# Apply configuration to matching platforms
 	for config in config_data:
 		var platform_path = config["path"]
+		
+		# Try to find platform by path first, then by name as fallback
+		var platform = null
 		if platform_path in platform_by_path:
-			var platform = platform_by_path[platform_path]
+			platform = platform_by_path[platform_path]
+		else:
+			# Extract platform name from path and try name matching
+			var path_parts = platform_path.split("/")
+			var platform_name = path_parts[-1]  # Get the last part (platform name)
+			if platform_name in platform_by_name:
+				platform = platform_by_name[platform_name]
+		
+		if platform:
 			var glass_type = config["glass_type"]
-			setup_platform(platform, glass_type)
-			print("CLIENT: Configured platform ", platform.name, " as ", Glass.keys()[glass_type])
+			
+			# Register platform in platform_objects using the actual client path
+			var client_platform_path = str(platform.get_path())
+			platform_objects[client_platform_path] = platform
+			
+			# Handle broken platforms
+			if config.get("is_broken", false):
+				setup_platform(platform, Glass.SOLID)  # Set up as solid first
+				platform_states[client_platform_path] = Glass.BROKEN
+				platform.visible = false  # Make broken platforms invisible
+				print("CLIENT: Configured platform ", platform.name, " as BROKEN (invisible)")
+			# Handle breaking platforms  
+			elif config.get("is_breaking", false):
+				setup_platform(platform, Glass.BRITTLE)  # Set up as brittle first
+				platform_states[client_platform_path] = Glass.BREAKING
+				change_platform_color(platform, Color.YELLOW)
+				print("CLIENT: Configured platform ", platform.name, " as BREAKING (yellow)")
+			else:
+				setup_platform(platform, glass_type)
+				print("CLIENT: Configured platform ", platform.name, " as ", Glass.keys()[glass_type])
 		else:
 			print("CLIENT: Warning - platform path not found: ", platform_path)
 	

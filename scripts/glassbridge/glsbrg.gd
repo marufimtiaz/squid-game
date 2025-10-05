@@ -59,12 +59,14 @@ func _ready() -> void:
 	game_manager.player_died.connect(_on_player_died)
 	game_manager.state_changed.connect(_on_game_state_changed)
 	
-	# MULTIPLAYER FIX: Only host generates platforms, clients receive config when they join
+	# MULTIPLAYER FIX: Both host and clients create platforms, but only host determines configuration
 	if multiplayer.is_server():
-		print("HOST: Generating platforms (will sync to clients as they join)...")
+		print("HOST: Generating platforms (will sync configuration to clients as they join)...")
 		platform_manager.setup_platforms(layer3, layer4)
 	else:
-		print("CLIENT: Waiting for host platform configuration...")
+		print("CLIENT: Creating platforms and waiting for host configuration...")
+		# Clients need to create the platforms first, then configuration will be applied
+		platform_manager.create_empty_platforms(layer3, layer4)
 	
 	# Setup killzone reference to game manager
 	#var killzone = $KillZone
@@ -983,3 +985,55 @@ func sync_game_state_rpc(game_state_data: Dictionary):
 			game_manager.apply_essential_sync_data(game_state_data)
 	else:
 		print("HOST: Synced game state to all clients: ", game_state_data.keys())
+
+@rpc("authority", "call_local", "reliable") 
+func sync_platform_break_rpc(platform_path: String):
+	"""RPC: Host notifies all clients when a platform breaks"""
+	print("RPC: Platform break sync - Path: ", platform_path, " IsServer: ", multiplayer.is_server())
+	
+	if not multiplayer.is_server():
+		# Client side - find and remove the platform
+		var platform_node = get_node_or_null(NodePath(platform_path))
+		if platform_node and platform_node is CSGBox3D:
+			print("CLIENT: Breaking platform via RPC: ", platform_node.name)
+			platform_manager.platform_states[platform_path] = PlatformManager.Glass.BROKEN
+			platform_manager.platform_objects[platform_path] = null
+			platform_node.queue_free()
+			platform_manager.call_deferred("_cleanup_single_platform", platform_path)
+		else:
+			print("CLIENT: Warning - Platform not found for breaking: ", platform_path)
+	else:
+		print("HOST: Platform break RPC sent to all clients: ", platform_path)
+
+func sync_platform_break_to_clients(platform_path: String):
+	"""Public method called by platform_manager to trigger RPC"""
+	if multiplayer.is_server():
+		print("HOST: Calling platform break RPC for: ", platform_path) 
+		sync_platform_break_rpc.rpc(platform_path)
+	else:
+		print("CLIENT: Ignoring platform break call - not host")
+
+@rpc("authority", "call_local", "reliable")
+func sync_platform_breaking_rpc(platform_path: String):
+	"""RPC: Host notifies all clients when a platform starts breaking"""
+	print("RPC: Platform breaking sync - Path: ", platform_path, " IsServer: ", multiplayer.is_server())
+	
+	if not multiplayer.is_server():
+		# Client side - find and set platform to breaking state
+		var platform_node = get_node_or_null(NodePath(platform_path))
+		if platform_node and platform_node is CSGBox3D:
+			print("CLIENT: Setting platform to breaking via RPC: ", platform_node.name)
+			platform_manager.platform_states[platform_node] = PlatformManager.Glass.BREAKING
+			platform_manager.change_platform_color(platform_node, Color.YELLOW)
+		else:
+			print("CLIENT: Warning - Platform not found for breaking state: ", platform_path)
+	else:
+		print("HOST: Platform breaking RPC sent to all clients: ", platform_path)
+
+func sync_platform_breaking_to_clients(platform_path: String):
+	"""Public method called by platform_manager to trigger breaking RPC"""
+	if multiplayer.is_server():
+		print("HOST: Calling platform breaking RPC for: ", platform_path) 
+		sync_platform_breaking_rpc.rpc(platform_path)
+	else:
+		print("CLIENT: Ignoring platform breaking call - not host")
