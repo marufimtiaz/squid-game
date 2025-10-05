@@ -201,6 +201,7 @@ func check_and_handle_game_end():
 		return
 	
 	if is_game_finished():
+		print("GAME_END: Game is finished, starting end transition...")
 		game_end_in_progress = true
 		print("All players finished - transitioning based on individual result...")
 		player_manager.freeze_all_players()
@@ -209,35 +210,74 @@ func check_and_handle_game_end():
 		var local_player_state = get_local_player_state()
 		print("GAME_END: My local player state is: ", State.keys()[local_player_state])
 		
+		# Debug: Show all player states and identify local player
+		if game_node and game_node.multiplayer.has_multiplayer_peer():
+			var local_peer_id = game_node.multiplayer.get_unique_id()
+			print("GAME_END: My peer ID is: ", local_peer_id)
+			print("GAME_END: All player states:")
+			for pid in player_states:
+				var state_name = State.keys()[player_states[pid]]
+				var is_me = (pid == local_peer_id)
+				print("  Player ", pid, ": ", state_name, " (local: ", is_me, ")")
+		else:
+			print("GAME_END: Single player mode")
+		
 		# Add 2-second delay to let players see the final animation
 		print("GAME_END: Waiting 2 seconds before transitioning to result screen...")
-		await game_node.get_tree().create_timer(2.0).timeout
+		var timer = game_node.get_tree().create_timer(2.0)
+		await timer.timeout
+		
+		# Double-check that we're still in the right state to continue
+		if not game_end_in_progress:
+			print("GAME_END: Game end was reset during timer, aborting transition")
+			return
+			
+		print("GAME_END: Timer completed, transitioning based on local player state: ", State.keys()[local_player_state])
 		
 		match local_player_state:
 			State.WON:
 				# Local player won - show end screen
-				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
+				print("GAME_END: Transitioning to end screen (WON)")
+				game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
 			State.DEAD:
-				# Local player died - show lose screen
-				game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
+				# Local player died - show lose screen  
+				print("GAME_END: Transitioning to lose screen (DEAD)")
+				game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/lose_screen.tscn")
 			_:
 				# Fallback - shouldn't happen but use overall result
+				print("GAME_END: Fallback case, local player state was: ", State.keys()[local_player_state])
 				var result = get_game_result()
+				print("GAME_END: Using overall game result: ", result)
 				match result:
 					"win":
-						game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/end_screen.tscn")
+						print("GAME_END: Fallback transitioning to end screen")
+						game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/end_screen.tscn")
 					"lose":
-						game_node.get_tree().call_deferred("change_scene_to_file", "res://scenes/glassbridge/lose_screen.tscn")
+						print("GAME_END: Fallback transitioning to lose screen")
+						game_node.get_tree().change_scene_to_file("res://scenes/glassbridge/lose_screen.tscn")
 
 func get_local_player_state() -> State:
 	"""Get the state of the local player on this instance"""
-	# Get the primary player (local player on this instance)
-	var primary_player = player_manager.get_primary_player()
-	if primary_player:
-		var player_id = player_manager.get_player_id(primary_player)
-		return get_player_state(player_id)
+	# In multiplayer mode, the local player ID is the multiplayer peer ID
+	if game_node and game_node.multiplayer.has_multiplayer_peer():
+		var local_player_id = game_node.multiplayer.get_unique_id()
+		if local_player_id in player_states:
+			return get_player_state(local_player_id)
+		else:
+			print("GAME_END: Warning - local player ID ", local_player_id, " not found in player_states")
+			# Fallback to primary player approach
+			var primary_player = player_manager.get_primary_player()
+			if primary_player:
+				var player_id = player_manager.get_player_id(primary_player)
+				return get_player_state(player_id)
+	else:
+		# Single player mode - use primary player
+		var primary_player = player_manager.get_primary_player()
+		if primary_player:
+			var player_id = player_manager.get_player_id(primary_player)
+			return get_player_state(player_id)
 	
-	# Fallback - if no primary player, assume single player mode
+	# Final fallback - assume single player mode with player 1
 	return get_player_state(1)
 
 func is_won() -> bool:
@@ -367,8 +407,8 @@ func get_essential_sync_data() -> Dictionary:
 	# Include player states in new format for direct access
 	essential_data["player_states"] = player_states.duplicate()
 	
-	# Include game end state
-	essential_data["game_end_in_progress"] = game_end_in_progress
+	# Skip syncing game_end_in_progress - each client manages their own transition
+	# essential_data["game_end_in_progress"] = game_end_in_progress
 	
 	# Only include changed/important state (legacy format)
 	var changed_players = {}
@@ -413,10 +453,10 @@ func apply_essential_sync_data(essential_data: Dictionary):
 				player_states[player_id] = new_states[player_id]
 				print("GameManager: Updated player ", player_id, " state from ", old_state, " to ", player_states[player_id])
 	
-	# Update game end state if present
-	if essential_data.has("game_end_in_progress"):
-		game_end_in_progress = essential_data["game_end_in_progress"]
-		print("GameManager: Updated game_end_in_progress to ", game_end_in_progress)
+	# Skip syncing game_end_in_progress - each client manages their own transition
+	# if essential_data.has("game_end_in_progress"):
+	#	game_end_in_progress = essential_data["game_end_in_progress"]
+	#	print("GameManager: Updated game_end_in_progress to ", game_end_in_progress)
 	
 	if essential_data.get("game_finished", false):
 		print("Essential sync: Game finished with result: ", essential_data.get("game_result", ""))
