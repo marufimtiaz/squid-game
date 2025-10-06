@@ -25,6 +25,7 @@ var platform_manager: PlatformManager
 var game_manager: GameManager
 var spawn_manager: SpawnManager
 
+
 func _ready() -> void:
 	print("===== MULTIPLAYER GAME SETUP STARTING =====")
 	
@@ -87,6 +88,9 @@ func _ready() -> void:
 	
 	# Step 8: Setup periodic sync logging
 	setup_sync_logging()
+	
+	# --- Start the dynamic platform state timer ---
+	_start_platform_state_timer()
 	
 	print("===== GAME SETUP COMPLETE =====")
 
@@ -355,8 +359,6 @@ func configure_spawned_player(new_player: CharacterBody3D):
 			# For remote players: make sure camera is disabled
 			camera.current = false
 			print("SPAWN: REMOTE player camera disabled for peer: ", peer_id)
-		
-		print("SPAWN: Final camera state - Peer: ", peer_id, " Current: ", camera.current, " Path: ", camera.get_path())
 	
 	# Add to PlayerManager
 	var added_to_manager = player_manager.add_player(new_player)
@@ -378,8 +380,6 @@ func configure_spawned_player(new_player: CharacterBody3D):
 	print("SPAWN: Added to GameManager for peer: ", peer_id)
 	
 	print("SPAWN: Player configured for peer ", peer_id, " at position: ", spawn_position)
-	print("SPAWN: Total players now: ", game_manager.get_active_player_count())
-
 func spawn_remote_player(peer_id: int):
 	"""Spawn a remote player for a peer that joined"""
 	print("SPAWN: Creating remote player for peer: ", peer_id)
@@ -1045,3 +1045,86 @@ func sync_platform_breaking_to_clients(platform_path: String):
 		sync_platform_breaking_rpc.rpc(platform_path)
 	else:
 		print("CLIENT: Ignoring platform breaking call - not host")
+
+@rpc("authority", "call_local", "reliable")
+func sync_platform_state_change_rpc(platform_path: String, new_state: PlatformManager.Glass):
+	"""RPC: Host notifies all clients when a platform's state changes via timer"""
+	print("RPC: Platform state change sync - Path: ", platform_path, " New State: ", PlatformManager.Glass.keys()[new_state], " IsServer: ", multiplayer.is_server())
+	
+	if not multiplayer.is_server():
+		# Client side - find and update the platform state
+		var platform_node = get_node_or_null(NodePath(platform_path))
+		if platform_node and platform_node is CSGBox3D:
+			print("CLIENT: Updating platform state via RPC: ", platform_node.name, " to ", PlatformManager.Glass.keys()[new_state])
+			platform_manager.setup_platform(platform_node, new_state)
+		else:
+			print("CLIENT: Warning - Platform not found for state change: ", platform_path)
+	else:
+		print("HOST: Platform state change RPC sent to all clients: ", platform_path, " -> ", PlatformManager.Glass.keys()[new_state])
+
+# --- Dynamic Platform State Timer ---
+var platform_state_timer: Timer
+var platform_state_interval := 2.0  # seconds
+var platforms_per_change := 5  # how many platforms to change each timer tick
+
+func _start_platform_state_timer():
+	platform_state_timer = Timer.new()
+	platform_state_timer.wait_time = platform_state_interval
+	platform_state_timer.one_shot = false
+	platform_state_timer.timeout.connect(_on_platform_state_timer_timeout)
+	add_child(platform_state_timer)
+	platform_state_timer.start()
+	print("[TIMER] Started dynamic platform timer - Interval: ", platform_state_interval, "s, Platforms per change: ", platforms_per_change)
+
+func set_platform_change_settings(interval: float, platforms_count: int):
+	"""Change the timer settings during gameplay"""
+	platform_state_interval = interval
+	platforms_per_change = max(1, platforms_count)  # Ensure at least 1 platform changes
+	
+	if platform_state_timer:
+		platform_state_timer.wait_time = platform_state_interval
+	
+	print("[TIMER] Updated settings - Interval: ", platform_state_interval, "s, Platforms per change: ", platforms_per_change)
+
+func _on_platform_state_timer_timeout():
+	# AUTHORITY CHECK: Only host should make platform state decisions
+	if not multiplayer.is_server():
+		return
+	
+	# Get all platforms from all layers that can be toggled (SOLID or BRITTLE only)
+	var toggleable_platforms = []
+	for layer in [layer3, layer4, layer5, layer6, layer7]:
+		var layer_platforms = layer.get_children().filter(func(child): return child is CSGBox3D)
+		for platform in layer_platforms:
+			var platform_path = str(platform.get_path())
+			var platform_state = platform_manager.platform_states.get(platform_path, PlatformManager.Glass.SOLID)
+			# Only include platforms that are SOLID or BRITTLE (not BREAKING or BROKEN)
+			if platform_state == PlatformManager.Glass.SOLID or platform_state == PlatformManager.Glass.BRITTLE:
+				toggleable_platforms.append(platform)
+	
+	if toggleable_platforms.is_empty():
+		return
+	
+	# Shuffle the platforms to get random selection
+	toggleable_platforms.shuffle()
+	
+	# Determine how many platforms to change (don't exceed available platforms)
+	var platforms_to_change = min(platforms_per_change, toggleable_platforms.size())
+	
+	print("[HOST TIMER] Changing ", platforms_to_change, " platform(s) out of ", toggleable_platforms.size(), " available")
+	
+	# Change multiple platforms
+	for i in range(platforms_to_change):
+		var selected_platform = toggleable_platforms[i]
+		var path = str(selected_platform.get_path())
+		var current_state = platform_manager.platform_states.get(path, PlatformManager.Glass.SOLID)
+		
+		# Toggle between SOLID and BRITTLE only
+		var new_state = PlatformManager.Glass.BRITTLE if current_state == PlatformManager.Glass.SOLID else PlatformManager.Glass.SOLID
+		
+		# HOST: Change the platform locally
+		platform_manager.setup_platform(selected_platform, new_state)
+		print("[HOST TIMER] Changed platform ", selected_platform.name, " from ", PlatformManager.Glass.keys()[current_state], " to ", PlatformManager.Glass.keys()[new_state])
+		
+		# HOST: Sync the change to all clients
+		sync_platform_state_change_rpc.rpc(path, new_state)

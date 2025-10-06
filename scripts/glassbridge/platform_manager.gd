@@ -133,7 +133,7 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 		print("Set platform as brittle: ", platform.name)
 		create_brittle_detector(platform)
 	else:
-		#change_platform_color(platform, Color.BLUE)    # Blue for solid
+		change_platform_color(platform, Color.WHITE)    # White for solid (or original color)
 		print("Set platform as solid: ", platform.name)
 
 func disable_platform(platform: CSGBox3D):
