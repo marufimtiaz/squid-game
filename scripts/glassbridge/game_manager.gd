@@ -234,6 +234,11 @@ func check_and_handle_game_end():
 			
 		print("GAME_END: Timer completed, transitioning based on local player state: ", State.keys()[local_player_state])
 		
+		# Stop timer once before any screen transition
+		if game_node.hud and game_node.multiplayer.is_server():
+			game_node.hud.stop_timer()
+			print("TIMER: Game timer stopped - transitioning to end screens")
+		
 		match local_player_state:
 			State.WON:
 				# Local player won - show end screen

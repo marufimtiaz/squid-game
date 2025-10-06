@@ -1,8 +1,9 @@
-[gd_scene load_steps=9 format=3 uid="uid://debhruqvkbw1c"]
+[gd_scene load_steps=10 format=3 uid="uid://debhruqvkbw1c"]
 
 [ext_resource type="Script" uid="uid://d0pgl6k41vxjv" path="res://scripts/glassbridge/glsbrg.gd" id="1_h21dd"]
 [ext_resource type="PackedScene" uid="uid://bwcufv5r8ctl8" path="res://scenes/glassbridge/platforms.tscn" id="2_btr28"]
 [ext_resource type="PackedScene" uid="uid://cb7312hk6qiee" path="res://scenes/glassbridge/killzone.tscn" id="3_btr28"]
+[ext_resource type="PackedScene" uid="uid://dhc5s4y7x8m0t" path="res://scenes/glassbridge/hud.tscn" id="4_hud"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_p8882"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -207,6 +208,8 @@ debug_color = Color(0.050708726, 0.5730574, 0.83116233, 0.878)
 _spawnable_scenes = PackedStringArray("uid://b2w3t6p82gxcs")
 spawn_path = NodePath("..")
 spawn_limit = 4
+
+[node name="HUD" parent="." instance=ExtResource("4_hud")]
 
 [connection signal="body_entered" from="Platforms/FinishPlatform/Goal" to="." method="_on_goal_body_entered"]
 [connection signal="timeout" from="Platforms/FinishPlatform/Goal/Timer" to="." method="_on_timer_timeout"]

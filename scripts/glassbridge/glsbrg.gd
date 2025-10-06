@@ -16,6 +16,9 @@ extends Node3D
 @onready var multiplayer_spawner: MultiplayerSpawner = $MultiplayerSpawner
 const PLAYER_SCENE = preload("res://scenes/glassbridge/player_glass.tscn")
 
+# HUD
+@onready var hud: CanvasLayer = $HUD
+
 # Pause screen
 @onready var pause_screen: Control
 
@@ -147,6 +150,12 @@ func spawn_local_player_as_host(peer_id: int):
 	
 	# Spawn at the calculated position
 	spawn_player_at_position(peer_id, spawn_position, true)
+	
+	# Start the game timer when the host spawns (game begins)
+	if hud:
+		hud.start_timer()
+		hud.show_hud()  # Show HUD when game starts
+		print("TIMER: Game timer started by host")
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_request_spawn_from_host(peer_id: int):
@@ -174,6 +183,10 @@ func rpc_spawn_local_at_position(peer_id: int, spawn_position: Vector3):
 	
 	# Spawn locally at the position specified by host
 	spawn_player_at_position(peer_id, spawn_position, true)
+	
+	# Show HUD for client when they spawn
+	if hud:
+		hud.show_hud()
 
 func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: bool):
 	"""Unified function to spawn a player (local or remote) at a specific position"""
@@ -292,6 +305,11 @@ func _on_player_joined(peer_id: int):
 	# HOST: Tell all existing clients about the new player with their position
 	print("SPAWN: Telling all clients about new player: ", peer_id, " at position: ", spawn_position)
 	rpc_spawn_player_for_clients.rpc(peer_id, spawn_position)
+	
+	# HOST: Sync timer state to the new client if timer is already running
+	if hud and hud.get_timer_running():
+		print("TIMER: Syncing timer state to new client: ", peer_id)
+		hud.sync_timer_start.rpc_id(peer_id, hud.get_timer_start_time())
 
 func configure_spawned_player(new_player: CharacterBody3D):
 	"""Configure a manually spawned player (position, camera, etc.)"""
@@ -775,9 +793,12 @@ func cleanup_multiplayer_session():
 # Signal handlers for game manager
 func _on_player_won(player_id: int):
 	print("Main script: Player ", player_id, " won!")
+	# Keep timer running until end screens are shown
+	# Keep HUD visible to show final time
 
 func _on_player_died(player_id: int):
 	print("Main script: Player ", player_id, " died!")
+	# Note: Don't stop timer when a player dies, only when game ends
 
 func is_local_player(player_id: int) -> bool:
 	"""Check if the given player ID is the local player on this instance"""
@@ -787,6 +808,8 @@ func is_local_player(player_id: int) -> bool:
 	else:
 		# Multiplayer mode - check against local multiplayer ID
 		return player_id == multiplayer.get_unique_id()
+
+
 
 func _on_game_state_changed(player_id: int, new_state):
 	print("Main script: Player ", player_id, " state changed to ", GameManager.State.keys()[new_state])
@@ -836,6 +859,10 @@ func open_player_menu(player_id: int):
 	# Show menu overlay (convert old pause screen to player menu)
 	pause_screen.visible = true
 	player_manager.release_mouse()
+	
+	# Hide HUD when menu is open
+	if hud:
+		hud.hide_hud()
 
 func close_player_menu(player_id: int):
 	"""Close menu for a specific player"""
@@ -845,6 +872,10 @@ func close_player_menu(player_id: int):
 	# Hide menu overlay
 	pause_screen.visible = false
 	player_manager.capture_mouse()
+	
+	# Show HUD when back in game
+	if hud:
+		hud.show_hud()
 
 func _unhandled_input(event: InputEvent):
 	"""Handle player menu input and centralized mouse control"""

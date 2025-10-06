@@ -1,0 +1,33 @@
+[gd_scene load_steps=2 format=3 uid="uid://dhc5s4y7x8m0t"]
+
+[ext_resource type="Script" path="res://scripts/glassbridge/hud.gd" id="1_0s4k6"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_0s4k6")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="TimerContainer" type="VBoxContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_right = 100.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
+[node name="TimerLabel" type="Label" parent="Control/TimerContainer"]
+layout_mode = 2
+text = "00:00"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Timer" type="Timer" parent="."]
+wait_time = 0.1
+autostart = false
