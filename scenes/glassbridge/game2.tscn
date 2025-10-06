@@ -34,7 +34,7 @@ shadow_enabled = true
 [node name="Platforms" parent="." instance=ExtResource("2_btr28")]
 
 [node name="FinishPlatform" parent="Platforms" index="1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80.160194, 1.9073486e-06, 12.926406)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 101.25518, 1.9073486e-06, 12.926406)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Platforms/FinishPlatform/Goal" index="0"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008728027, 0)
@@ -87,6 +87,78 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 25.2803
 
 [node name="Glass15" parent="Platforms/Layer4" index="7"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.98013, 0.01736641, 30.280396)
+
+[node name="Glass16" parent="Platforms/Layer5" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, -2.1126747)
+
+[node name="Glass17" parent="Platforms/Layer5" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 2.8873255)
+
+[node name="Glass18" parent="Platforms/Layer5" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 7.8873253)
+
+[node name="Glass19" parent="Platforms/Layer5" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 12.887325)
+
+[node name="Glass20" parent="Platforms/Layer5" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 17.887325)
+
+[node name="Glass21" parent="Platforms/Layer5" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 22.887325)
+
+[node name="Glass22" parent="Platforms/Layer5" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12882, 0.01748848, 27.887325)
+
+[node name="Glass23" parent="Platforms/Layer5" index="7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 77.12883, 0.01748848, 32.887325)
+
+[node name="Glass24" parent="Platforms/Layer6" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, -4.537258)
+
+[node name="Glass25" parent="Platforms/Layer6" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 0.4627421)
+
+[node name="Glass26" parent="Platforms/Layer6" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 5.462742)
+
+[node name="Glass27" parent="Platforms/Layer6" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 10.462742)
+
+[node name="Glass28" parent="Platforms/Layer6" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 15.462742)
+
+[node name="Glass29" parent="Platforms/Layer6" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 20.462742)
+
+[node name="Glass30" parent="Platforms/Layer6" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.023796, 0.01748848, 25.462742)
+
+[node name="Glass31" parent="Platforms/Layer6" index="7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.0238, 0.01748848, 30.462742)
+
+[node name="Glass32" parent="Platforms/Layer7" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, -2.0153408)
+
+[node name="Glass33" parent="Platforms/Layer7" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 2.9846594)
+
+[node name="Glass34" parent="Platforms/Layer7" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 7.984659)
+
+[node name="Glass35" parent="Platforms/Layer7" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 12.984659)
+
+[node name="Glass36" parent="Platforms/Layer7" index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 17.98466)
+
+[node name="Glass37" parent="Platforms/Layer7" index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 22.98466)
+
+[node name="Glass38" parent="Platforms/Layer7" index="6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.858826, 0.01748848, 27.98466)
+
+[node name="Glass39" parent="Platforms/Layer7" index="7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 90.85883, 0.01748848, 32.98466)
 
 [node name="Killzone" parent="." instance=ExtResource("3_btr28")]
 

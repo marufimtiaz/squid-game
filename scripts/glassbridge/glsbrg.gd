@@ -5,6 +5,11 @@ extends Node3D
 @onready var goaltimer: Timer = $Platforms/FinishPlatform/Goal/Timer
 @onready var layer3: Node = $Platforms/Layer3
 @onready var layer4: Node = $Platforms/Layer4
+@onready var layer5: Node = $Platforms/Layer5
+@onready var layer6: Node = $Platforms/Layer6
+@onready var layer7: Node = $Platforms/Layer7
+
+
 @onready var killzone: Area3D = $Killzone
 
 # Multiplayer spawning
@@ -60,7 +65,7 @@ func _ready() -> void:
 	game_manager.state_changed.connect(_on_game_state_changed)
 	
 	# MULTIPLAYER FIX: Both host and clients create platforms, but only host determines configuration
-	var platform_layers: Array[Node] = [layer3, layer4]  # Explicit typed array for flexibility
+	var platform_layers: Array[Node] = [layer3, layer4, layer5, layer6, layer7]  # Explicit typed array for flexibility
 	
 	if multiplayer.is_server():
 		print("HOST: Generating platforms (will sync configuration to clients as they join)...")

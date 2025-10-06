@@ -29,13 +29,13 @@ uv1_scale = Vector3(5, 5, 5)
 [node name="Platforms" type="Node3D"]
 
 [node name="MainPlatform" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.436794, 1.9073486e-06, 12.928115)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.32875, 0.00012397766, 13.110461)
 use_collision = true
 size = Vector3(34.6416, 1, 26.200867)
 material = SubResource("StandardMaterial3D_xrrf0")
 
 [node name="FinishPlatform" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 68.160194, 1.9073486e-06, 12.926406)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 84.28935, 0.00012397766, 13.108752)
 use_collision = true
 size = Vector3(11, 1, 39.039978)
 material = SubResource("StandardMaterial3D_xrrf0")
@@ -43,7 +43,7 @@ material = SubResource("StandardMaterial3D_xrrf0")
 [node name="Goal" type="Area3D" parent="FinishPlatform"]
 
 [node name="Glass1" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.415646, 1.9073486e-06, 11.745406)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.763733, 0.00012397766, 11.9277525)
 use_collision = true
 size = Vector3(8.685547, 1, 18)
 material = SubResource("StandardMaterial3D_kh4a2")
@@ -51,13 +51,13 @@ material = SubResource("StandardMaterial3D_kh4a2")
 [node name="Layer2" type="Node" parent="."]
 
 [node name="Glass2" type="CSGBox3D" parent="Layer2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.47843, 3.8146973e-06, 22.781857)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.24361, 0.00012588501, 22.964203)
 use_collision = true
 size = Vector3(8.685547, 1, 9)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass3" type="CSGBox3D" parent="Layer2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.47843, 3.8146973e-06, 2.4195118)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.24361, 0.00012588501, 2.6018584)
 use_collision = true
 size = Vector3(8.685547, 1, 9)
 material = SubResource("StandardMaterial3D_kh4a2")
@@ -65,25 +65,25 @@ material = SubResource("StandardMaterial3D_kh4a2")
 [node name="Layer3" type="Node" parent="."]
 
 [node name="Glass4" type="CSGBox3D" parent="Layer3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.444897, 0.01736641, -2.7196045)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56.483757, 0.01748848, -2.537258)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass5" type="CSGBox3D" parent="Layer3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.444897, 0.01736641, 7.6983643)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56.483757, 0.01748848, 7.8807106)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass6" type="CSGBox3D" parent="Layer3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.444897, 0.01736641, 18.088573)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56.483757, 0.01748848, 18.27092)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass7" type="CSGBox3D" parent="Layer3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.444897, 0.01736641, 27.377186)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56.483757, 0.01748848, 27.559532)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
@@ -91,49 +91,199 @@ material = SubResource("StandardMaterial3D_kh4a2")
 [node name="Layer4" type="Node" parent="."]
 
 [node name="Glass8" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, -4.7196045)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, -4.537258)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass9" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 0.2803955)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 0.4627421)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass10" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 5.2803955)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 5.462742)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass11" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 10.2803955)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 10.462742)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass12" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 15.2803955)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 15.462742)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass13" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 20.280396)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 20.462742)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass14" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 25.280396)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279655, 0.01748848, 25.462742)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
 
 [node name="Glass15" type="CSGBox3D" parent="Layer4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.980137, 0.01736641, 30.280396)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 61.279663, 0.01748848, 30.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer5" type="Node" parent="."]
+
+[node name="Glass16" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, -2.1126747)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass17" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 2.8873255)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass18" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 7.8873253)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass19" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 12.887325)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass20" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 17.887325)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass21" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 22.887325)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass22" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12882, 0.01748848, 27.887325)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass23" type="CSGBox3D" parent="Layer5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.12883, 0.01748848, 32.887325)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer6" type="Node" parent="."]
+
+[node name="Glass24" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, -4.537258)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass25" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 0.4627421)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass26" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 5.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass27" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 10.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass28" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 15.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass29" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 20.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass30" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.023796, 0.01748848, 25.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass31" type="CSGBox3D" parent="Layer6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 71.0238, 0.01748848, 30.462742)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Layer7" type="Node" parent="."]
+
+[node name="Glass32" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, -2.0153408)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass33" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 2.9846594)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass34" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 7.984659)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass35" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 12.984659)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass36" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 17.98466)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass37" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 22.98466)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass38" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.858826, 0.01748848, 27.98466)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("StandardMaterial3D_kh4a2")
+
+[node name="Glass39" type="CSGBox3D" parent="Layer7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.85883, 0.01748848, 32.98466)
 use_collision = true
 size = Vector3(4, 1, 4)
 material = SubResource("StandardMaterial3D_kh4a2")
