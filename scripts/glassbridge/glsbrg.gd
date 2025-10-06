@@ -92,8 +92,12 @@ func _ready() -> void:
 	# Step 8: Setup periodic sync logging
 	setup_sync_logging()
 	
-	# --- Start the dynamic platform state timer ---
-	_start_platform_state_timer()
+	# --- Start the dynamic platform state timer (HOST ONLY) ---
+	if multiplayer.is_server():
+		_start_platform_state_timer()
+		print("HOST: Dynamic platform timer started")
+	else:
+		print("CLIENT: Skipping platform timer (host manages this)")
 	
 	print("===== GAME SETUP COMPLETE =====")
 
@@ -825,6 +829,11 @@ func _on_timer_timeout() -> void:
 	pass
 
 func _exit_tree():
+	# Clean up platform timer
+	if platform_state_timer and is_instance_valid(platform_state_timer):
+		platform_state_timer.queue_free()
+		platform_state_timer = null
+	
 	# Clean up multiplayer session first
 	cleanup_multiplayer_session()
 	
@@ -1108,14 +1117,18 @@ func _start_platform_state_timer():
 	print("[TIMER] Started dynamic platform timer - Interval: ", platform_state_interval, "s, Platforms per change: ", platforms_per_change)
 
 func set_platform_change_settings(interval: float, platforms_count: int):
-	"""Change the timer settings during gameplay"""
+	"""Change the timer settings during gameplay (HOST ONLY)"""
+	if not multiplayer.is_server():
+		print("[TIMER] Error: Only host can change platform timer settings")
+		return
+	
 	platform_state_interval = interval
 	platforms_per_change = max(1, platforms_count)  # Ensure at least 1 platform changes
 	
 	if platform_state_timer:
 		platform_state_timer.wait_time = platform_state_interval
 	
-	print("[TIMER] Updated settings - Interval: ", platform_state_interval, "s, Platforms per change: ", platforms_per_change)
+	print("[HOST TIMER] Updated settings - Interval: ", platform_state_interval, "s, Platforms per change: ", platforms_per_change)
 
 func _on_platform_state_timer_timeout():
 	# AUTHORITY CHECK: Only host should make platform state decisions
