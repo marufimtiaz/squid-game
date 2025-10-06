@@ -5,6 +5,7 @@ extends CanvasLayer
 
 var game_start_time: Dictionary = {}
 var is_timer_running: bool = false
+var timer_started: bool = false  # Track if timer has been manually started
 
 # Multiplayer synchronization
 @rpc("authority", "call_local", "reliable")
@@ -12,6 +13,7 @@ func sync_timer_start(start_time: Dictionary):
 	"""Synchronize timer start across all clients"""
 	game_start_time = start_time
 	is_timer_running = true
+	timer_started = true
 	update_timer.start()
 	print("HUD: Timer synchronized - start time: ", start_time)
 	print("HUD: Timer is now running: ", is_timer_running)
@@ -26,8 +28,8 @@ func _ready():
 	# Connect the update timer signal
 	update_timer.timeout.connect(_on_update_timer_timeout)
 	
-	# Make sure timer label is visible
-	timer_label.text = "00:00"
+	# Show appropriate message based on whether this is host or client
+	_update_initial_message()
 	
 	# Add some styling to make the timer more visible
 	timer_label.add_theme_font_size_override("font_size", 36)
@@ -47,8 +49,11 @@ func _ready():
 func start_timer():
 	"""Start the timer - only called by host"""
 	if multiplayer.is_server():
-		game_start_time = Time.get_time_dict_from_system()
-		sync_timer_start.rpc(game_start_time)
+		if not timer_started:  # Only start if not already started
+			game_start_time = Time.get_time_dict_from_system()
+			sync_timer_start.rpc(game_start_time)
+		else:
+			print("HUD: Timer already started")
 	else:
 		print("Warning: Only host can start timer")
 
@@ -62,8 +67,19 @@ func _on_update_timer_timeout():
 	if is_timer_running:
 		update_display()
 
+func _update_initial_message():
+	"""Set the appropriate initial message based on host/client status"""
+	if multiplayer.is_server():
+		timer_label.text = "Press T to start"
+	else:
+		timer_label.text = "Waiting for host"
+
 func update_display():
 	"""Update the timer display with current elapsed time"""
+	if not timer_started:
+		_update_initial_message()
+		return
+		
 	if not is_timer_running:
 		return
 		
@@ -114,6 +130,10 @@ func hide_hud():
 func get_timer_running() -> bool:
 	"""Get whether the timer is currently running"""
 	return is_timer_running
+
+func get_timer_started() -> bool:
+	"""Get whether the timer has been started manually"""
+	return timer_started
 
 func get_timer_start_time() -> Dictionary:
 	"""Get the timer start time for synchronization"""

@@ -155,11 +155,10 @@ func spawn_local_player_as_host(peer_id: int):
 	# Spawn at the calculated position
 	spawn_player_at_position(peer_id, spawn_position, true)
 	
-	# Start the game timer when the host spawns (game begins)
+	# Show HUD when host spawns (ready to start timer manually)
 	if hud:
-		hud.start_timer()
-		hud.show_hud()  # Show HUD when game starts
-		print("TIMER: Game timer started by host")
+		hud.show_hud()  # Show HUD with "Press T to start" message
+		print("HUD: Showing HUD - ready for manual timer start")
 
 @rpc("any_peer", "call_local", "reliable")
 func rpc_request_spawn_from_host(peer_id: int):
@@ -310,8 +309,8 @@ func _on_player_joined(peer_id: int):
 	print("SPAWN: Telling all clients about new player: ", peer_id, " at position: ", spawn_position)
 	rpc_spawn_player_for_clients.rpc(peer_id, spawn_position)
 	
-	# HOST: Sync timer state to the new client if timer is already running
-	if hud and hud.get_timer_running():
+	# HOST: Sync timer state to the new client if timer has been started
+	if hud and hud.get_timer_started():
 		print("TIMER: Syncing timer state to new client: ", peer_id)
 		hud.sync_timer_start.rpc_id(peer_id, hud.get_timer_start_time())
 
@@ -888,6 +887,14 @@ func close_player_menu(player_id: int):
 
 func _unhandled_input(event: InputEvent):
 	"""Handle player menu input and centralized mouse control"""
+	# Timer start handling (T key) - only for host
+	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
+		if multiplayer.is_server() and hud:
+			print("Host pressed T - starting timer")
+			hud.start_timer()
+		elif not multiplayer.is_server():
+			print("Only host can start timer with T key")
+	
 	# Step 7: Per-player menu handling (no global pause)
 	if event.is_action_pressed("ui_cancel"):  # ESC key
 		print("ESC pressed! Player count: ", player_manager.get_player_count())
