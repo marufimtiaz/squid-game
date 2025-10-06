@@ -18,16 +18,16 @@ func add_spawn_point(position: Vector3):
 func setup_default_spawn_points():
 	"""Setup default spawn points for the glass bridge level"""
 	# Starting area spawn points (forward/back line on starting platform)
-	add_spawn_point(Vector3(2, 2, 20))    # Primary start (safest, most forward)
-	add_spawn_point(Vector3(2, 2, 18))    # Behind player 1
-	add_spawn_point(Vector3(2, 2, 22))    # Ahead of player 1  
-	add_spawn_point(Vector3(2, 2, 16))   # Left side
-	add_spawn_point(Vector3(2, 2, 24))    # Right side
+	add_spawn_point(Vector3(2, 0, 20))    # Primary start (safest, most forward)
+	add_spawn_point(Vector3(2, 0, 18))    # Behind player 1
+	add_spawn_point(Vector3(2, 0, 22))    # Ahead of player 1  
+	add_spawn_point(Vector3(2, 0, 16))   # Left side
+	add_spawn_point(Vector3(2, 0, 24))    # Right side
 	
 	# Mid-level spawn points (in case of mid-game joining)
-	add_spawn_point(Vector3(2, 2, 17))    # Mid bridge
-	add_spawn_point(Vector3(2, 2, 15))   # Mid left
-	add_spawn_point(Vector3(2, 2, 13))    # Mid right
+	add_spawn_point(Vector3(2, 0, 17))    # Mid bridge
+	add_spawn_point(Vector3(2, 0, 15))   # Mid left
+	add_spawn_point(Vector3(2, 0, 13))    # Mid right
 	
 	print("Default spawn points setup complete: ", spawn_points.size(), " points available")
 
