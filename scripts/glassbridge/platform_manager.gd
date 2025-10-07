@@ -11,20 +11,6 @@ var brittle_timers = {}
 # Step 8: Track which players are on each platform for sync
 var platform_affected_players = {}  # platform -> Array[int]
 
-# SCALABILITY NOTE: Platform system supports multiple layers via explicit arrays
-#
-# CURRENT USAGE (Layer3 & Layer4):
-#   var platform_layers = [layer3, layer4]
-#   platform_manager.setup_platforms(platform_layers)
-#   platform_manager.create_empty_platforms(platform_layers)
-#
-# FOR MORE LAYERS (easily extensible):
-#   var platform_layers = [layer1, layer2, layer3, layer4, layer5]  # As many as needed
-#   platform_manager.setup_platforms(platform_layers)
-#
-# AUTO-DISCOVERY OPTION (finds all Layer* nodes):
-#   platform_manager.setup_platforms_auto($Platforms)  # Discovers layers automatically
-
 const BREAK_TIME: float = 1.0
 
 var game_node: Node3D
@@ -35,16 +21,27 @@ func _init(init_game_node: Node3D, init_player_manager: PlayerManager):
 	self.player_manager = init_player_manager
 
 func setup_layer_platforms(layer: Node):
-	"""Setup platforms for a single layer with half brittle, half solid"""
+	"""Setup platforms for a single layer with dynamic distribution: ~3/8 brittle, ~3/8 broken, ~2/8 solid"""
 	var glass_platforms = layer.get_children().filter(func(child): return child is CSGBox3D)
 	glass_platforms.shuffle()
 	
-	var platforms_to_make_brittle = (len(glass_platforms) / 2.0) as int
+	var total_platforms = len(glass_platforms)
 	
-	for i in range(len(glass_platforms)):
+	# Dynamic distribution based on proportions (3:3:2 ratio)
+	# Use floor to ensure we don't exceed total platforms
+	var platforms_brittle = (total_platforms * 3.0 / 8.0) as int
+	var platforms_broken = (total_platforms * 3.0 / 8.0) as int
+	# Remaining platforms will be solid
+	var platforms_solid = total_platforms - platforms_brittle - platforms_broken
+	
+	print("Layer ", layer.name, " distribution: ", platforms_brittle, " brittle, ", platforms_broken, " broken, ", platforms_solid, " solid (total: ", total_platforms, ")")
+	
+	for i in range(total_platforms):
 		var platform = glass_platforms[i]
-		if i < platforms_to_make_brittle:
+		if i < platforms_brittle:
 			setup_platform(platform, Glass.BRITTLE)
+		elif i < (platforms_brittle + platforms_broken):
+			setup_platform(platform, Glass.BROKEN)
 		else:
 			setup_platform(platform, Glass.SOLID)
 
@@ -132,8 +129,16 @@ func setup_platform(platform: CSGBox3D, glass_type: Glass):
 		change_platform_color(platform, Color.ORANGE)  # Orange for brittle
 		print("Set platform as brittle: ", platform.name)
 		create_brittle_detector(platform)
-	else:
-		change_platform_color(platform, Color.WHITE)    # White for solid (or original color)
+	elif glass_type == Glass.BROKEN:
+		# Make platform invisible and disable collision for broken state
+		platform.visible = false
+		platform.set_collision_layer(0)
+		platform.set_collision_mask(0)
+		print("Set platform as broken (invisible): ", platform.name)
+		# Set platform_objects to null since it's effectively removed
+		platform_objects[platform_path] = null
+	else: # Glass.SOLID
+		change_platform_color(platform, Color.WHITE)    # White for solid
 		print("Set platform as solid: ", platform.name)
 
 func disable_platform(platform: CSGBox3D):
