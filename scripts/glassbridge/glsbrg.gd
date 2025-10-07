@@ -126,6 +126,12 @@ func setup_multiplayer_spawning():
 		else:
 			call_deferred("spawn_single_player_fallback")
 
+func disable_new_connections():
+	"""Disable accepting new player connections (called when timer starts)"""
+	if multiplayer.is_server():
+		print("HOST: Game has started - will now reject late joiners")
+		# Note: We keep the signal connected but handle rejection in _on_player_joined
+
 
 
 # REMOVED: spawn_all_connected_players - reverting to manual spawning approach
@@ -283,6 +289,23 @@ func _on_player_joined(peer_id: int):
 	if not multiplayer.is_server():
 		print("SPAWN: Not host, ignoring player join coordination")
 		return
+	
+	# Check if timer has already started - send late joiners back to multiplayer screen
+	if hud and hud.get_timer_started():
+		print("SPAWN: Game already started - notifying late joiner: ", peer_id)
+		# Send RPC to notify client and redirect them
+		notify_game_already_started.rpc_id(peer_id)
+		# Give client time to receive RPC, then disconnect if still connected
+		await get_tree().create_timer(0.5).timeout
+		# Check if peer is still connected before trying to disconnect
+		if multiplayer.has_multiplayer_peer() and peer_id in multiplayer.get_peers():
+			multiplayer.disconnect_peer(peer_id)
+			print("SPAWN: Disconnected late joiner: ", peer_id)
+		else:
+			print("SPAWN: Late joiner ", peer_id, " already disconnected")
+		return
+	
+
 	
 	# HOST: Send platform configuration to the new client
 	print("HOST: Sending platform configuration to new client: ", peer_id)
@@ -879,6 +902,8 @@ func _unhandled_input(event: InputEvent):
 			# Enable movement for all players when timer starts
 			if game_manager:
 				game_manager.enable_player_movement()
+			# Disable new player connections once game starts
+			disable_new_connections()
 		elif not multiplayer.is_server():
 			print("Only host can start timer with T key")
 	
@@ -1037,6 +1062,21 @@ func sync_player_movement_rpc(can_move_state: bool):
 		game_manager._set_all_players_movement(can_move_state)
 	else:
 		print("ERROR: No game_manager available for movement sync")
+
+@rpc("authority", "call_local", "reliable")
+func notify_game_already_started():
+	"""RPC: Host notifies late joiner that game has already started"""
+	if not multiplayer.is_server():
+		print("CLIENT: Received notification - game already started, returning to multiplayer screen")
+		# Set a flag that the multiplayer screen can read
+		# We'll use a simple approach - set a metadata in the tree
+		get_tree().set_meta("late_joiner_message", "Game already started.")
+		# Clean up any partial connection state
+		cleanup_multiplayer_session()
+		# Return to multiplayer screen with status message
+		get_tree().change_scene_to_file("res://scenes/glassbridge/multiplayer_screen.tscn")
+
+
 
 @rpc("authority", "call_local", "reliable") 
 func sync_platform_break_rpc(platform_path: String):

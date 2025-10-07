@@ -20,6 +20,14 @@ func _ready():
 	host_ip_label.text = "Host IP: " + local_ip
 	host_ip_label.visible = true
 	status_label.text = ""  # Empty by default
+	
+	# Check if we were sent here due to late joining
+	if get_tree().has_meta("late_joiner_message"):
+		var message = get_tree().get_meta("late_joiner_message")
+		status_label.text = message
+		# Clear the message so it doesn't persist
+		get_tree().remove_meta("late_joiner_message")
+		print("Multiplayer Screen: Displayed late joiner message: ", message)
 
 # REMOVED: SPACE bar game starting - host goes directly to game now
 # func _input(event): - No longer needed
