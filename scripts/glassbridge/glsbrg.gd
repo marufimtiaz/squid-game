@@ -92,12 +92,7 @@ func _ready() -> void:
 	# Step 8: Setup periodic sync logging
 	setup_sync_logging()
 	
-	# --- Start the dynamic platform state timer (HOST ONLY) ---
-	if multiplayer.is_server():
-		_start_platform_state_timer()
-		print("HOST: Dynamic platform timer started")
-	else:
-		print("CLIENT: Skipping platform timer (host manages this)")
+	# Note: Dynamic platform timer will start when host presses T to begin game
 	
 	print("===== GAME SETUP COMPLETE =====")
 
@@ -904,6 +899,8 @@ func _unhandled_input(event: InputEvent):
 				game_manager.enable_player_movement()
 			# Disable new player connections once game starts
 			disable_new_connections()
+			# Start the dynamic platform state timer when game begins
+			_start_platform_state_timer()
 		elif not multiplayer.is_server():
 			print("Only host can start timer with T key")
 	
