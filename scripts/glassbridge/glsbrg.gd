@@ -484,25 +484,9 @@ func calculate_deterministic_spawn_position(peer_id: int) -> Vector3:
 	if not spawn_manager:
 		return spawn_position
 	
-	# Get current list of all existing players (from scene, not multiplayer.get_peers())
-	var existing_peers = []
-	for child in get_children():
-		if child.name.begins_with("Player_"):
-			var existing_peer_id = child.name.get_slice("_", 1).to_int()
-			existing_peers.append(existing_peer_id)
-	
-	# The new peer gets the next available spawn index (don't add to list, just count)
-	var next_spawn_index = existing_peers.size()
-	
-	print("HOST: Calculating spawn for peer ", peer_id, " - existing players: ", existing_peers, " next index: ", next_spawn_index)
-	
-	if next_spawn_index < spawn_manager.get_spawn_point_count():
-		spawn_position = spawn_manager.spawn_points[next_spawn_index]
-		print("HOST: Deterministic spawn - Peer ", peer_id, " gets next available index ", next_spawn_index, " at ", spawn_position)
-	else:
-		# Fallback to old method
-		spawn_position = spawn_manager.assign_spawn_point(peer_id)
-		print("HOST: Using fallback spawn for peer ", peer_id, " at ", spawn_position)
+	# Use spawn_manager's assign_spawn_point method which properly tracks usage
+	spawn_position = spawn_manager.assign_spawn_point(peer_id)
+	print("HOST: Deterministic spawn - Peer ", peer_id, " assigned position ", spawn_position)
 	
 	return spawn_position
 
@@ -890,8 +874,11 @@ func _unhandled_input(event: InputEvent):
 	# Timer start handling (T key) - only for host
 	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
 		if multiplayer.is_server() and hud:
-			print("Host pressed T - starting timer")
+			print("Host pressed T - starting timer and enabling player movement")
 			hud.start_timer()
+			# Enable movement for all players when timer starts
+			if game_manager:
+				game_manager.enable_player_movement()
 		elif not multiplayer.is_server():
 			print("Only host can start timer with T key")
 	
@@ -1040,6 +1027,16 @@ func sync_game_state_rpc(game_state_data: Dictionary):
 			game_manager.apply_essential_sync_data(game_state_data)
 	else:
 		print("HOST: Synced game state to all clients: ", game_state_data.keys())
+
+@rpc("authority", "call_local", "reliable")
+func sync_player_movement_rpc(can_move_state: bool):
+	"""RPC: Host syncs player movement state to all clients"""
+	print("RPC: Player movement sync - CanMove: ", can_move_state, " IsServer: ", multiplayer.is_server())
+	
+	if game_manager:
+		game_manager._set_all_players_movement(can_move_state)
+	else:
+		print("ERROR: No game_manager available for movement sync")
 
 @rpc("authority", "call_local", "reliable") 
 func sync_platform_break_rpc(platform_path: String):

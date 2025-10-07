@@ -471,6 +471,24 @@ func apply_essential_sync_data(essential_data: Dictionary):
 		print("GameManager: Processing game end check from sync")
 		call_deferred("check_and_handle_game_end")
 
+func enable_player_movement():
+	"""Enable movement for all players - called when host starts timer"""
+	print("GameManager: Enabling movement for all players")
+	# Use RPC to sync to all clients 
+	if game_node and game_node.has_method("sync_player_movement_rpc"):
+		game_node.sync_player_movement_rpc.rpc(true)
+	else:
+		# Fallback for local-only 
+		_set_all_players_movement(true)
+
+func _set_all_players_movement(can_move_state: bool):
+	"""Set movement state for all local players"""
+	for player in player_manager.get_all_players():
+		if player:
+			player.can_move = can_move_state
+			var state_text = "enabled" if can_move_state else "disabled" 
+			player.log_player("Movement " + state_text)
+
 func _sync_game_state_to_clients(game_state_data: Dictionary):
 	"""Send game state from host to all clients via RPC through the main scene"""
 	if game_node and game_node.has_method("sync_game_state_rpc"):

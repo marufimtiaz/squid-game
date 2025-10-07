@@ -15,7 +15,7 @@ var player_manager: PlayerManager
 var game_manager: GameManager
 
 ## Can we move around?
-@export var can_move : bool = true
+@export var can_move : bool = false
 ## Are we affected by gravity?
 @export var has_gravity : bool = true
 ## Can we press to jump?
