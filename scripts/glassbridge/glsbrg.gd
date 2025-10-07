@@ -28,6 +28,10 @@ var platform_manager: PlatformManager
 var game_manager: GameManager
 var spawn_manager: SpawnManager
 
+# Player join order tracking for sequential naming
+var player_join_counter: int = 0
+var peer_to_player_number: Dictionary = {}  # peer_id -> player_number
+
 
 func _ready() -> void:
 	print("===== MULTIPLAYER GAME SETUP STARTING =====")
@@ -127,7 +131,19 @@ func disable_new_connections():
 		print("HOST: Game has started - will now reject late joiners")
 		# Note: We keep the signal connected but handle rejection in _on_player_joined
 
+func assign_player_number(peer_id: int) -> int:
+	"""Assign a sequential player number based on join order"""
+	if peer_id not in peer_to_player_number:
+		player_join_counter += 1
+		peer_to_player_number[peer_id] = player_join_counter
+		print("NAMING: Assigned Player ", player_join_counter, " to peer ", peer_id)
+	
+	return peer_to_player_number[peer_id]
 
+func get_player_display_name(peer_id: int) -> String:
+	"""Get the display name for a player (Player 1, Player 2, etc.)"""
+	var player_number = assign_player_number(peer_id)
+	return "Player " + str(player_number)
 
 # REMOVED: spawn_all_connected_players - reverting to manual spawning approach
 
@@ -149,6 +165,9 @@ func spawn_local_player_manual():
 func spawn_local_player_as_host(peer_id: int):
 	"""Host spawns local player with proper positioning"""
 	print("SPAWN: Creating local host player for peer: ", peer_id)
+	
+	# Ensure host gets Player 1 
+	assign_player_number(peer_id)
 	
 	# Calculate position using the same logic as remote players
 	var spawn_position = calculate_deterministic_spawn_position(peer_id)
@@ -232,7 +251,7 @@ func spawn_player_at_position(peer_id: int, spawn_position: Vector3, is_local: b
 	
 	# Configure player properties manually
 	new_player.player_id = peer_id
-	new_player.player_name = "Player " + str(peer_id)
+	new_player.player_name = get_player_display_name(peer_id)  # Use sequential naming
 	new_player.player_manager = player_manager
 	new_player.game_manager = game_manager
 	
@@ -284,6 +303,9 @@ func _on_player_joined(peer_id: int):
 	if not multiplayer.is_server():
 		print("SPAWN: Not host, ignoring player join coordination")
 		return
+	
+	# Assign sequential player number for this new joiner
+	assign_player_number(peer_id)
 	
 	# Check if timer has already started - send late joiners back to multiplayer screen
 	if hud and hud.get_timer_started():
@@ -339,7 +361,7 @@ func configure_spawned_player(new_player: CharacterBody3D):
 	
 	# Configure the spawned player
 	new_player.player_id = peer_id
-	new_player.player_name = "Player " + str(peer_id)
+	new_player.player_name = get_player_display_name(peer_id)
 	
 	# Get spawn position - use deterministic assignment based on peer order
 	var spawn_position = Vector3(0, 2, 20)  # Default position
@@ -547,7 +569,7 @@ func spawn_remote_player_at_position(peer_id: int, spawn_position: Vector3):
 	
 	# Configure player properties
 	remote_player.player_id = peer_id
-	remote_player.player_name = "Player " + str(peer_id)
+	remote_player.player_name = get_player_display_name(peer_id)
 	
 	# Set player manager reference in player
 	remote_player.player_manager = player_manager
@@ -590,7 +612,7 @@ func _on_player_spawned(node: Node):
 	
 	# Configure the spawned player
 	new_player.player_id = peer_id
-	new_player.player_name = "Player " + str(peer_id)
+	new_player.player_name = get_player_display_name(peer_id)
 	
 	# Get spawn position - use deterministic assignment based on peer order
 	var spawn_position = Vector3(0, 2, 20)  # Default position
