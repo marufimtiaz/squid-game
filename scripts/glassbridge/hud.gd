@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 @onready var timer_label: Label = $Control/TimerContainer/TimerLabel
+@onready var player_name_label: Label = $Control/PlayerNameLabel
 @onready var update_timer: Timer = $Timer
 
 var game_start_time: Dictionary = {}
@@ -37,6 +38,14 @@ func _ready():
 	timer_label.add_theme_color_override("font_shadow_color", Color.BLACK)
 	timer_label.add_theme_constant_override("shadow_offset_x", 2)
 	timer_label.add_theme_constant_override("shadow_offset_y", 2)
+	
+	# Style the player name label
+	if player_name_label:
+		player_name_label.add_theme_font_size_override("font_size", 24)
+		player_name_label.add_theme_color_override("font_color", Color.WHITE)
+		player_name_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+		player_name_label.add_theme_constant_override("shadow_offset_x", 1)
+		player_name_label.add_theme_constant_override("shadow_offset_y", 1)
 	
 	# Make sure HUD doesn't capture mouse input - let it pass through
 	var control_node = $Control
@@ -138,3 +147,9 @@ func get_timer_started() -> bool:
 func get_timer_start_time() -> Dictionary:
 	"""Get the timer start time for synchronization"""
 	return game_start_time
+
+func set_player_name(player_name: String):
+	"""Set the player name to display in the HUD"""
+	if player_name_label:
+		player_name_label.text = player_name
+		print("HUD: Player name set to: ", player_name)
