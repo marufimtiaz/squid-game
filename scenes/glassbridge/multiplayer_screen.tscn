@@ -103,6 +103,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="SinglePlayer" type="Button" parent="VBoxContainer"]
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 27
@@ -167,14 +168,14 @@ label_settings = SubResource("LabelSettings_gwkhq")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_start_game_1_pressed"]
 [connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_single_player_pressed"]
+[connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_start_game_1_pressed"]
 [connection signal="pressed" from="VBoxContainer/SinglePlayer" to="." method="_on_resume_pressed"]
-[connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_host_pressed"]
 [connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_start_game_2_pressed"]
+[connection signal="pressed" from="VBoxContainer/Host" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_join_pressed"]
-[connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_start_game_2_pressed"]
-[connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_quit_pressed"]
+[connection signal="pressed" from="VBoxContainer/Join" to="." method="_on_main_menu_pressed"]
 [connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="VBoxContainer/Back" to="." method="_on_quit_pressed"]
